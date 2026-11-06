@@ -24,7 +24,8 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-window.addEventListener('resize', resize);
+new ResizeObserver(resize).observe(document.getElementById('stage'));
+coarsePointer.addEventListener('change', resize);
 resize();
 newGame();
 requestAnimationFrame(frame);

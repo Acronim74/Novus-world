@@ -159,7 +159,10 @@ bindRange('optVMax', () => cfg.vMax, v => { cfg.vMax = v; });
 bindRange('optClimbPawn', () => cfg.climbThr.pawn, v => { cfg.climbThr.pawn = v; });
 
 bindCheck('optCircleDark', 'circleDark', updatePanel);
-bindSelect('optPowerSide', () => cfg.powerSide, v => { cfg.powerSide = v; });
+bindSelect('optPowerSide', () => cfg.powerSide, v => {
+  cfg.powerSide = v;
+  resize();
+});
 
 document.getElementById('btnNew').addEventListener('click', newGame);
 document.getElementById('btnUndo').addEventListener('click', restoreSnapshot);

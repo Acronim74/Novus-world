@@ -83,7 +83,13 @@ function drawHint() {
 // ===== Отрисовка =====
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
-const view = { s: 1, ox: 0, oy: 0, dpr: 1 };
+const view = { s: 1, ox: 0, oy: 0, dpr: 1, gauge: null };
+const coarsePointer = window.matchMedia('(pointer: coarse)');
+
+// На сенсорном экране шкала силы — широкая полоса за бортом, её тянут пальцем.
+function wideGauge() {
+  return coarsePointer.matches && cfg.powerSide !== 'off';
+}
 
 function resize() {
   const stage = document.getElementById('stage');
@@ -94,11 +100,34 @@ function resize() {
   canvas.height = Math.round(h * dpr);
   canvas.style.width = `${w}px`;
   canvas.style.height = `${h}px`;
-  const total = FIELD + 2 * RAIL_W + 60;
   view.dpr = dpr;
-  view.s = Math.min(w, h) * dpr / total;
-  view.ox = (canvas.width - FIELD * view.s) / 2;
-  view.oy = (canvas.height - FIELD * view.s) / 2;
+
+  const margin = 30;
+  const total = FIELD + 2 * RAIL_W + 2 * margin;
+  const gw = wideGauge() ? 34 * dpr : 0;
+  const gap = wideGauge() ? 6 * dpr : 0;
+  view.s = Math.min((canvas.width - gw - gap) / total, canvas.height / total);
+  const size = FIELD * view.s;
+  const rail = RAIL_W * view.s;
+  const left = (canvas.width - total * view.s - gw - gap) / 2;
+  const toField = (margin + RAIL_W) * view.s;
+  view.oy = (canvas.height - size) / 2;
+
+  if (!gw) {
+    view.ox = left + toField;
+    const gwRail = Math.max(8 * dpr, rail * 0.5);
+    const x = cfg.powerSide === 'left'
+      ? view.ox - rail / 2 - gwRail / 2
+      : view.ox + size + rail / 2 - gwRail / 2;
+    view.gauge = { x, y: view.oy, w: gwRail, h: size };
+  } else if (cfg.powerSide === 'left') {
+    const gx = left + margin * view.s;
+    view.ox = gx + gw + gap + rail;
+    view.gauge = { x: gx, y: view.oy, w: gw, h: size };
+  } else {
+    view.ox = left + toField;
+    view.gauge = { x: view.ox + size + rail + gap, y: view.oy, w: gw, h: size };
+  }
 }
 
 function flipped() {
@@ -283,14 +312,7 @@ function drawCue() {
 // Шкала силы на боковом борту, в координатах экрана: при повороте стола остаётся на своей стороне.
 function drawPowerGauge() {
   const d = view.dpr;
-  const size = FIELD * view.s;
-  const rail = RAIL_W * view.s;
-  const w = Math.max(8 * d, rail * 0.5);
-  const x = cfg.powerSide === 'left'
-    ? view.ox - rail / 2 - w / 2
-    : view.ox + size + rail / 2 - w / 2;
-  const top = view.oy;
-  const h = size;
+  const { x, y: top, w, h } = view.gauge;
   const fill = h * aim.power;
 
   ctx.save();
@@ -335,6 +357,12 @@ function drawPowerGauge() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, x + w / 2, ty + d);
+  } else if (wideGauge() && phase === 'place') {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.font = `${14 * d}px "Segoe UI", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let k = 0; k < 3; k++) ctx.fillText('▲', x + w / 2, top + h - (14 + k * 16) * d);
   }
   ctx.restore();
 }
@@ -353,10 +381,18 @@ function drawToast() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = alpha;
   const d = view.dpr;
-  ctx.font = `600 ${18 * d}px "Segoe UI", sans-serif`;
-  const w = ctx.measureText(toast.text).width + 36 * d;
-  const h = 40 * d;
-  const x = canvas.width / 2 - w / 2;
+  const maxW = FIELD * view.s * 0.94;
+  let font = 18 * d;
+  ctx.font = `600 ${font}px "Segoe UI", sans-serif`;
+  const tw = ctx.measureText(toast.text).width;
+  if (tw + 36 * d > maxW) {
+    font *= (maxW - 24 * d) / tw;
+    ctx.font = `600 ${font}px "Segoe UI", sans-serif`;
+  }
+  const w = Math.min(maxW, ctx.measureText(toast.text).width + 36 * d);
+  const h = font + 22 * d;
+  const cx = view.ox + FIELD * view.s / 2;
+  const x = cx - w / 2;
   const y = view.oy + FIELD * view.s * 0.36 - h / 2;
   ctx.fillStyle = TOAST_COLORS[toast.cls] || TOAST_COLORS.pass;
   ctx.beginPath();
@@ -365,7 +401,7 @@ function drawToast() {
   ctx.fillStyle = toast.cls === 'win' ? '#1d2327' : '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(toast.text, canvas.width / 2, y + h / 2 + d);
+  ctx.fillText(toast.text, cx, y + h / 2 + d);
   ctx.restore();
 }
 

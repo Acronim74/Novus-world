@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <title>Новус — прототип</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1d2327">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,15 +22,20 @@
       </div>
 
       <div class="buttons">
-        <button id="btnUndo">Вернуть позицию до удара</button>
+        <button id="btnUndo"><span class="full">Вернуть позицию до удара</span><span class="short">↶ Отменить</span></button>
         <button id="btnNew">Новая партия</button>
-        <button id="btnDrawer">⚙ Настройки и журнал</button>
+        <button id="btnDrawer">⚙ <span class="full">Настройки и журнал</span><span class="short">Настройки</span></button>
       </div>
     </aside>
 
     <div id="stage"><canvas id="board"></canvas></div>
 
     <aside id="right" class="side">
+      <div id="touchBar">
+        <button id="btnRotL" aria-label="Повернуть прицел против часовой стрелки">⟲</button>
+        <span>Точный прицел</span>
+        <button id="btnRotR" aria-label="Повернуть прицел по часовой стрелке">⟳</button>
+      </div>
       <h2>Последний удар</h2>
       <div id="lastShot"><div class="empty">Ударов ещё не было</div></div>
       <h2>Нарушения</h2>
@@ -63,6 +71,8 @@
         <li><b>Перетащите шайбу</b> мышью — её можно поставить в любое место своей бортовой зоны (зелёная область), так, чтобы в отверстии не была видна линия.</li>
         <li><b>Наведите мышь</b> — шайба целится в сторону курсора. Стрелки ← → точно доворачивают угол (с Shift — быстрее).</li>
         <li><b>Зажмите кнопку и тяните назад</b> — это сила удара. Отпустите, чтобы ударить. Esc или правая кнопка — отмена.</li>
+        <li><b>На телефоне:</b> перетащите шайбу пальцем; ведите пальцем по полю — шайба целится в эту точку; кнопки ⟲ ⟳ доворачивают прицел.</li>
+        <li><b>Сила на телефоне:</b> коснитесь шкалы на борту снизу и ведите палец вверх, отпустите — удар. Чтобы не бить, верните палец вниз до 0% и отпустите.</li>
         <li>Пунктирное кольцо — ваша тёмная пешка, жёлтое — пешка висит над лузой.</li>
       </ul>
     </details>
