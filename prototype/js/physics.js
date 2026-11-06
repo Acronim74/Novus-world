@@ -1,0 +1,202 @@
+'use strict';
+
+// ===== Физика =====
+function physicsStep(dt) {
+  const live = bodies.filter(b => b.state === 'table');
+  for (const b of live) integrate(b, dt);
+  // Несколько проходов, чтобы фишка, зажатая бортами или другими фишками, вела себя как жёсткая опора.
+  for (let iter = 0; iter < SOLVER_ITERATIONS; iter++) {
+    for (let i = 0; i < live.length; i++) {
+      for (let j = i + 1; j < live.length; j++) {
+        if (live[i].state === 'table' && live[j].state === 'table') collidePucks(live[i], live[j]);
+      }
+    }
+    for (const b of live) if (b.state === 'table') collideRails(b);
+  }
+  for (const b of live) if (b.state === 'table') checkPockets(b, dt);
+}
+
+function decel(b) {
+  return (b.kind === 'striker' ? cfg.muStriker : cfg.muPawn) * G;
+}
+
+function integrate(b, dt) {
+  if (b.z > 0 || b.vz > 0) {
+    b.vz -= G * dt;
+    b.z += b.vz * dt;
+    if (b.z <= 0) {
+      b.z = 0;
+      b.vz = 0;
+      b.climb = null;
+    }
+  } else {
+    const sp = Math.hypot(b.vx, b.vy);
+    if (sp > 0) {
+      const k = Math.max(0, sp - decel(b) * dt) / sp;
+      b.vx *= k;
+      b.vy *= k;
+    }
+  }
+  b.x += b.vx * dt;
+  b.y += b.vy * dt;
+}
+
+function collidePucks(a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const R = a.r + b.r;
+  const d2 = dx * dx + dy * dy;
+  if (d2 >= R * R) return;
+  // Фишка в прыжке пролетает над другой, если их высоты почти не пересекаются.
+  const vertical = Math.min(a.z + a.h, b.z + b.h) - Math.max(a.z, b.z);
+  if (vertical <= 2) return;
+
+  const d = Math.sqrt(d2) || 1e-4;
+  const nx = dx / d;
+  const ny = dy / d;
+  const fa = freedom(a, -nx, -ny);
+  const fb = freedom(b, nx, ny);
+  const ia = fa / a.m;
+  const ib = fb / b.m;
+  if (ia + ib < 1e-9) return;
+  const pen = R - d;
+  a.x -= nx * pen * ia / (ia + ib);
+  a.y -= ny * pen * ia / (ia + ib);
+  b.x += nx * pen * ib / (ia + ib);
+  b.y += ny * pen * ib / (ia + ib);
+
+  const vrel = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
+  if (vrel <= 0) return;
+  const j = (1 + cfg.puckE) * vrel / (ia + ib);
+  a.vx -= j * ia * nx;
+  a.vy -= j * ia * ny;
+  b.vx += j * ib * nx;
+  b.vy += j * ib * ny;
+  springBack(b, a, nx, ny, 1 - fb);
+  springBack(a, b, -nx, -ny, 1 - fa);
+
+  noteContact(a, b, vrel);
+  popUp(a, vrel);
+  popUp(b, vrel);
+
+  if (vrel > cfg.hopThr) {
+    const light = a.m < b.m ? a : b.m < a.m ? b : (Math.random() < 0.5 ? a : b);
+    light.vz += (vrel - cfg.hopThr) * cfg.hopK * (0.5 + Math.random());
+  }
+}
+
+// Насколько фишка может сдвинуться в направлении (dx, dy): борт, к которому она прижата,
+// держит её. В углу между двумя бортами по диагонали фишка неподвижна.
+function freedom(b, dx, dy) {
+  let blocked = 0;
+  if (b.z < RAIL_H) {
+    for (const rail of RAILS) {
+      if (rail.gap(b) > b.r + 0.5) continue;
+      const into = -(dx * rail.nx + dy * rail.ny);
+      if (into > 0) blocked += into * into;
+    }
+  }
+  return Math.max(0, 1 - blocked);
+}
+
+// Прижатая к борту фишка после удара пружинит от него и выходит следом за ударившей,
+// немного медленнее её, чтобы не догнать.
+function springBack(body, other, nx, ny, support) {
+  if (support <= 0) return;
+  const target = (other.vx * nx + other.vy * ny) * 0.8;
+  const current = body.vx * nx + body.vy * ny;
+  if (target >= current) return;
+  const dv = (target - current) * support;
+  body.vx += dv * nx;
+  body.vy += dv * ny;
+}
+
+function collideRails(b) {
+  for (const rail of RAILS) {
+    const gap = rail.gap(b);
+    if (b.climb === rail.side || b.z >= RAIL_H) {
+      if (gap < -b.r * 0.5) {
+        markOut(b, rail.side);
+        return;
+      }
+      continue;
+    }
+    if (gap >= b.r) continue;
+
+    const vn = -(b.vx * rail.nx + b.vy * rail.ny);
+    if (vn > 0) {
+      const excess = vn - cfg.climbThr[b.kind];
+      if (excess > 0 && Math.random() < Math.min(0.85, excess / cfg.climbRange)) {
+        b.climb = rail.side;
+        b.vz = Math.max(b.vz, 700 + Math.random() * 300);
+        b.vx *= 0.6;
+        b.vy *= 0.6;
+        noteRail(b, rail.side);
+        continue;
+      }
+      const tx = -rail.ny;
+      const ty = rail.nx;
+      const vt = (b.vx * tx + b.vy * ty) * cfg.railTangent;
+      const vnOut = vn * cfg.railE;
+      b.vx = rail.nx * vnOut + tx * vt;
+      b.vy = rail.ny * vnOut + ty * vt;
+      popUp(b, vn);
+      noteRail(b, rail.side);
+    }
+    const pen = b.r - gap;
+    b.x += rail.nx * pen;
+    b.y += rail.ny * pen;
+  }
+}
+
+// Фишка над отверстием проседает тем быстрее, чем дальше её центр за краем.
+// Пока она просела меньше чем на половину толщины, край ещё может вытолкнуть её обратно.
+function checkPockets(b, dt) {
+  let overhang = 0;
+  if (b.z === 0) {
+    for (const pk of POCKETS) {
+      const d = Math.hypot(b.x - pk.x, b.y - pk.y);
+      if (d < POCKET_R) overhang = Math.max(overhang, Math.min(1, (POCKET_R - d) / b.r));
+    }
+  }
+  if (overhang === 0) {
+    b.sink = 0;
+    b.sinkV = 0;
+    return;
+  }
+  b.sinkV += G * overhang * dt;
+  b.sink += b.sinkV * dt;
+  if (b.sink <= 0) {
+    b.sink = 0;
+    b.sinkV = Math.max(0, b.sinkV);
+  }
+  if (b.sink >= b.h / 2) {
+    Object.assign(b, { state: 'pocketed', vx: 0, vy: 0, sink: 0, sinkV: 0 });
+    shot?.events.push({ type: 'pocket', body: b });
+  }
+}
+
+function popUp(b, impactSpeed) {
+  if (b.sink > 0) b.sinkV = Math.min(b.sinkV, -impactSpeed * cfg.popK);
+}
+
+function markOut(b, side) {
+  Object.assign(b, { state: 'out', outSide: side, vx: 0, vy: 0, z: 0, vz: 0, climb: null });
+  shot?.events.push({ type: 'out', body: b, side });
+}
+
+function noteContact(a, b, vrel) {
+  if (!shot || vrel < 5) return;
+  if (!shot.firstContact && (a === striker || b === striker)) {
+    shot.firstContact = a === striker ? b : a;
+  }
+}
+
+function noteRail(b, side) {
+  if (shot && b === striker && !shot.firstContact) shot.railsBeforeFirst.add(side);
+}
+
+function allStopped() {
+  return bodies.every(b => b.state !== 'table' ||
+    (b.vx === 0 && b.vy === 0 && b.z === 0 && b.vz === 0 && b.sink === 0));
+}

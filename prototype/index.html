@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Новус — прототип</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="left" class="side">
+      <h1>Новус</h1>
+      <div id="turn"></div>
+      <div id="scoreboard"></div>
+
+      <div class="block">
+        <div class="label">Сила удара <span id="powerValue">0%</span></div>
+        <div id="power"><div id="powerFill"></div></div>
+      </div>
+
+      <div class="buttons">
+        <button id="btnUndo">Вернуть позицию до удара</button>
+        <button id="btnNew">Новая партия</button>
+        <button id="btnDrawer">⚙ Настройки и журнал</button>
+      </div>
+    </aside>
+
+    <div id="stage"><canvas id="board"></canvas></div>
+
+    <aside id="right" class="side">
+      <h2>Последний удар</h2>
+      <div id="lastShot"><div class="empty">Ударов ещё не было</div></div>
+      <h2>Нарушения</h2>
+      <div id="fouls"></div>
+    </aside>
+  </div>
+
+  <div id="drawer" class="closed">
+    <div class="drawer-head">
+      <span>Настройки</span>
+      <button id="btnDrawerClose" title="Закрыть">✕</button>
+    </div>
+
+    <div class="block mode">
+      <label>Режим
+        <select id="optMode">
+          <option value="ai">Против компьютера</option>
+          <option value="hotseat">Вдвоём за одним компьютером</option>
+        </select>
+      </label>
+      <label>Сложность
+        <select id="optLevel">
+          <option value="1">Новичок</option>
+          <option value="2">Любитель</option>
+          <option value="3">Мастер</option>
+        </select>
+      </label>
+    </div>
+
+    <details class="block">
+      <summary>Управление</summary>
+      <ul class="help">
+        <li><b>Перетащите шайбу</b> мышью — её можно поставить в любое место своей бортовой зоны (зелёная область), так, чтобы в отверстии не была видна линия.</li>
+        <li><b>Наведите мышь</b> — шайба целится в сторону курсора. Стрелки ← → точно доворачивают угол (с Shift — быстрее).</li>
+        <li><b>Зажмите кнопку и тяните назад</b> — это сила удара. Отпустите, чтобы ударить. Esc или правая кнопка — отмена.</li>
+        <li>Пунктирное кольцо — ваша тёмная пешка, жёлтое — пешка висит над лузой.</li>
+      </ul>
+    </details>
+
+    <details class="block" open>
+      <summary>Правила</summary>
+      <label class="check"><input type="checkbox" id="optCircleDark" checked> Центральный круг — тёмное поле (п. 11.2)</label>
+      <div class="note">Если выключить, пешка в круге считается светлой, и по ней можно бить прямым ударом. Так играют по некоторым местным правилам.</div>
+      <label class="check"><input type="checkbox" id="optFree"> Шайбу можно ставить на всей своей половине</label>
+    </details>
+
+    <details class="block">
+      <summary>Вид</summary>
+      <label class="check"><input type="checkbox" id="optHint" checked> Подсказка траектории</label>
+      <label class="select">Шкала силы удара на борту
+        <select id="optPowerSide">
+          <option value="right">Справа</option>
+          <option value="left">Слева</option>
+          <option value="off">Не показывать</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="optFlip"> Поворачивать стол к игроку</label>
+      <label class="check"><input type="checkbox" id="optSlow"> Замедленное движение</label>
+    </details>
+
+    <details class="block">
+      <summary>Физика</summary>
+      <label class="select">Состояние стола
+        <select id="optTable">
+          <option value="fresh">Свежая натирка порошком</option>
+          <option value="normal">Обычная натирка</option>
+          <option value="worn">Порошок стёрся</option>
+          <option value="bare">Без порошка</option>
+        </select>
+      </label>
+      <label class="range">Трение шайбы, μ <span></span><input type="range" id="optMuStriker" min="0.03" max="0.35" step="0.01"></label>
+      <label class="range">Трение пешек, μ <span></span><input type="range" id="optMuPawn" min="0.03" max="0.35" step="0.01"></label>
+      <label class="range">Упругость удара фишек <span></span><input type="range" id="optPuckE" min="0.4" max="0.95" step="0.01"></label>
+      <label class="range">Упругость бортов <span></span><input type="range" id="optRailE" min="0.4" max="0.95" step="0.01"></label>
+      <label class="range">Макс. скорость удара, мм/с <span></span><input type="range" id="optVMax" min="2000" max="9000" step="100"></label>
+      <label class="range">Порог вылета пешки, мм/с <span></span><input type="range" id="optClimbPawn" min="1000" max="6000" step="100"></label>
+    </details>
+
+    <div class="block log">
+      <div class="label">Журнал</div>
+      <ol id="log"></ol>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/zones.js"></script>
+  <script src="js/shot.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/referee.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

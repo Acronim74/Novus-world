@@ -1,0 +1,13 @@
+# Редакторы и ОС
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Зависимости и сборка (на будущее)
+node_modules/
+dist/
+build/
+*.log

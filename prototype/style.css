@@ -1,0 +1,408 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #1d2327;
+  color: #e6e6e6;
+  font: 14px/1.4 "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  height: 100%;
+}
+
+#stage {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+#board {
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+
+.side {
+  width: clamp(180px, 17vw, 260px);
+  flex-shrink: 0;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+h2 {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8fa0aa;
+}
+
+.label {
+  color: #8fa0aa;
+  margin-bottom: 4px;
+}
+
+/* ----- Ход и счёт ----- */
+#turn {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #262d32;
+  font-size: 15px;
+}
+
+#turn .hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #8fa0aa;
+}
+
+.chip {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 1px solid #888;
+}
+
+#scoreboard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #262d32;
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.card.active {
+  border-color: #ffc107;
+}
+
+.card .head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 2px;
+  font-weight: 600;
+}
+
+.card .head small {
+  margin-left: 6px;
+  font-weight: normal;
+  color: #8fa0aa;
+}
+
+.card .head .bat {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d2327;
+  background: #ffc107;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.card .big {
+  margin-top: 4px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.card .big small {
+  font-size: 13px;
+  font-weight: normal;
+  color: #8fa0aa;
+}
+
+.pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.pip {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #4a555c;
+  position: relative;
+}
+
+.pip::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: #262d32;
+}
+
+.card .sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #8fa0aa;
+}
+
+.card .sub b { color: #ff8a80; }
+
+/* ----- Сила удара и кнопки ----- */
+#power {
+  height: 12px;
+  border-radius: 6px;
+  background: #262d32;
+  overflow: hidden;
+}
+
+#powerFill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #4caf50, #ffc107 60%, #f44336);
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+}
+
+button {
+  padding: 8px;
+  border: 1px solid #3d474e;
+  border-radius: 6px;
+  background: #313a40;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover { background: #3a454c; }
+button:disabled { opacity: 0.4; cursor: default; }
+
+/* ----- Последний удар и нарушения ----- */
+#lastShot .who {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+#lastShot .empty, #fouls .empty {
+  color: #8fa0aa;
+  font-size: 13px;
+}
+
+.event {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: #262d32;
+  font-size: 13px;
+}
+
+.event .icon {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.event.ok { border-left: 3px solid #66bb6a; }
+.event.ok .icon { color: #66bb6a; }
+.event.bad { border-left: 3px solid #ef5350; }
+.event.bad .icon { color: #ef5350; }
+.event.warn { border-left: 3px solid #ffb74d; }
+.event.warn .icon { color: #ffb74d; }
+.event.info { border-left: 3px solid #607d8b; }
+.event.info .icon { color: #90a4ae; }
+
+.verdict {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.verdict.keep { background: rgba(102, 187, 106, 0.18); color: #a5d6a7; }
+.verdict.pass { background: rgba(144, 164, 174, 0.15); color: #cfd8dc; }
+.verdict.foul { background: rgba(239, 83, 80, 0.18); color: #ff8a80; }
+.verdict.win { background: rgba(255, 193, 7, 0.2); color: #ffd54f; }
+
+#fouls table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+#fouls th, #fouls td {
+  padding: 4px;
+  text-align: center;
+}
+
+#fouls th:first-child, #fouls td:first-child {
+  text-align: left;
+  color: #b0bec5;
+}
+
+#fouls th {
+  font-weight: normal;
+  color: #8fa0aa;
+}
+
+#fouls td.hot { color: #ff8a80; font-weight: 700; }
+
+#fouls .history {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+#fouls .history div {
+  padding: 3px 0;
+  border-top: 1px solid #2c3439;
+  color: #b0bec5;
+}
+
+/* ----- Выдвижная панель ----- */
+#drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  padding: 16px;
+  background: #262d32;
+  border-left: 1px solid #333c42;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  transition: transform 0.25s ease;
+  z-index: 10;
+}
+
+#drawer.closed {
+  transform: translateX(105%);
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.drawer-head button {
+  padding: 2px 10px;
+}
+
+.mode {
+  display: flex;
+  gap: 8px;
+}
+
+.mode label {
+  flex: 1;
+  color: #8fa0aa;
+  font-size: 12px;
+}
+
+.mode select, label.select select {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  padding: 6px;
+  border: 1px solid #3d474e;
+  border-radius: 6px;
+  background: #313a40;
+  color: #e6e6e6;
+  font: inherit;
+  font-size: 13px;
+}
+
+details summary {
+  cursor: pointer;
+  color: #8fa0aa;
+}
+
+.help {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.help li { margin-bottom: 4px; }
+
+.note {
+  margin: 2px 0 4px 22px;
+  font-size: 12px;
+  color: #8fa0aa;
+}
+
+label.check {
+  display: block;
+  margin-top: 6px;
+}
+
+label.range, label.select {
+  display: block;
+  margin-top: 8px;
+}
+
+label.range span {
+  float: right;
+  color: #8fa0aa;
+}
+
+label.range input {
+  width: 100%;
+}
+
+.log {
+  flex: 1;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+}
+
+#log {
+  flex: 1;
+  margin: 0;
+  padding: 6px 6px 6px 26px;
+  background: #1d2327;
+  border-radius: 6px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+#log li { margin-bottom: 2px; }
+#log li.shot { margin-top: 6px; color: #fff; font-weight: 600; }
+#log li.foul { color: #ff8a80; }
+#log li.ok { color: #a5d6a7; }
+#log li.info { color: #8fa0aa; }
