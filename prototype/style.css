@@ -694,6 +694,9 @@ button.primary:hover { background: #357a43; }
     padding: 6px 4px;
   }
 
+  .buttons #btnRecords, .buttons #btnDrawer { flex: 0 0 44px; font-size: 18px; }
+  .buttons #btnOnline { flex: 1.3; }
+
   .full { display: none; }
   .short { display: inline; }
 
@@ -731,6 +734,7 @@ button.primary:hover { background: #357a43; }
   }
 
   .buttons button { padding: 4px; }
+  .buttons #btnOnline { grid-column: 1 / -1; }
   .full { display: none; }
   .short { display: inline; }
 

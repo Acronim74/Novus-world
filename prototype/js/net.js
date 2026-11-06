@@ -461,6 +461,9 @@ function roomLink() {
 }
 
 function renderOnline() {
+  document.getElementById('btnOnline').innerHTML = net.code
+    ? `🌐 <span class="full">Комната ${net.code}</span><span class="short">${net.code}</span>`
+    : '🌐 <span class="full">Играть по сети с другом</span><span class="short">По сети</span>';
   const box = document.getElementById('onlineBody');
   if (!box) return;
   const err = onlineError ? `<div class="net-error">${escapeHtml(onlineError)}</div>` : '';
