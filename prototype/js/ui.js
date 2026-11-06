@@ -24,19 +24,25 @@ function updatePower() {
 
 function updatePanel() {
   const pl = PLAYERS[current];
+  const peer = net.peerName || 'Соперник';
   const hint = phase === 'moving' ? 'Фишки в движении…'
     : phase === 'over' ? 'Нажмите «Новая партия»'
     : phase === 'ai' ? `Компьютер ${aiStatus}`
+    : phase === 'remote' ? (net.peerOnline ? `${peer} целится…` : `${peer} не в сети — ждём`)
     : 'Поставьте шайбу, прицельтесь и ударьте';
+  const room = net.code
+    ? `<span class="netline"><span class="dot ${net.peerOnline ? 'on' : net.peerUid ? 'off' : 'wait'}"></span>` +
+      `По сети · ${net.code}${net.peerUid ? ` · ${escapeHtml(peer)}` : ' · ждём соперника'}</span>`
+    : '';
   document.getElementById('turn').innerHTML =
     `<span class="chip" style="background:${pl.color}"></span>Бьют <b>${pl.name}</b>` +
-    `<span class="hint">${hint}</span>`;
+    `<span class="hint">${hint}</span>${room}`;
 
   document.getElementById('scoreboard').innerHTML = PLAYERS.map((p, i) => {
     const onTable = pawnsOnTable(i);
     const inPocket = bodies.filter(b => b.kind === 'pawn' && b.owner === i && b.state === 'pocketed').length;
-    const role = cfg.mode === 'ai'
-      ? (isAI(i) ? `компьютер · ${AI_LEVELS[cfg.level].name.toLowerCase()}` : 'вы')
+    const role = net.active ? (i === net.seat ? 'вы' : escapeHtml(net.peerName || 'соперник'))
+      : cfg.mode === 'ai' ? (isAI(i) ? `компьютер · ${AI_LEVELS[cfg.level].name.toLowerCase()}` : 'вы')
       : `игрок ${i + 1}`;
     const pips = Array.from({ length: 8 }, (_, k) =>
       `<span class="pip" style="${k < inPocket ? `background:${p.color};border-color:#9aa5ab` : ''}"></span>`).join('');
@@ -50,7 +56,7 @@ function updatePanel() {
       `</div>`;
   }).join('');
 
-  document.getElementById('btnUndo').disabled = !snapshot || phase === 'moving';
+  document.getElementById('btnUndo').disabled = !snapshot || phase === 'moving' || net.active;
   updatePower();
   renderSidePanels();
 }
@@ -118,6 +124,10 @@ function bindSelect(id, get, set) {
 
 bindSelect('optMode', () => cfg.mode, v => {
   cfg.mode = v;
+  if (net.code) {
+    leaveRoom();
+    return;
+  }
   aiToken++;
   aiShowCue = false;
   if (phase === 'ai') startTurn();
@@ -164,10 +174,14 @@ bindSelect('optPowerSide', () => cfg.powerSide, v => {
   resize();
 });
 
-document.getElementById('btnNew').addEventListener('click', newGame);
+document.getElementById('btnNew').addEventListener('click', () => (net.active ? netNewGame() : newGame()));
 document.getElementById('btnUndo').addEventListener('click', restoreSnapshot);
 
 const drawer = document.getElementById('drawer');
+
+function closeDrawer() {
+  drawer.classList.add('closed');
+}
 document.getElementById('btnDrawer').addEventListener('click', () => drawer.classList.toggle('closed'));
 document.getElementById('btnDrawerClose').addEventListener('click', () => drawer.classList.add('closed'));
 window.addEventListener('keydown', e => {

@@ -416,8 +416,8 @@ label.range input {
 #log li.ok { color: #a5d6a7; }
 #log li.info { color: #8fa0aa; }
 
-/* ----- Статистика партий ----- */
-#records {
+/* ----- Окна: статистика, игра по сети ----- */
+.modal {
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -429,12 +429,12 @@ label.range input {
   transition: opacity 0.2s;
 }
 
-#records.closed {
+.modal.closed {
   opacity: 0;
   pointer-events: none;
 }
 
-#records .sheet {
+.modal .sheet {
   width: min(520px, 100%);
   max-height: 100%;
   overflow-y: auto;
@@ -518,6 +518,88 @@ table.rec tr.total td { font-weight: 700; border-bottom: none; }
 }
 
 .sheet-foot .note { flex: 1; margin: 0; }
+
+button.primary {
+  background: #2e6b3a;
+  border-color: #3f8a4e;
+  font-weight: 600;
+}
+
+button.primary:hover { background: #357a43; }
+
+#onlineBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+#onlineBody input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #3d474e;
+  border-radius: 6px;
+  background: #1d2327;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+}
+
+#onlineBody .field {
+  color: #8fa0aa;
+  font-size: 12px;
+}
+
+#onlineBody .field input { margin-top: 3px; }
+
+#onlineBody .join {
+  display: flex;
+  gap: 8px;
+}
+
+#onlineBody .join input { flex: 1; min-width: 0; }
+#netCode { text-transform: uppercase; letter-spacing: 0.1em; }
+
+#onlineBody .or {
+  text-align: center;
+  font-size: 12px;
+  color: #8fa0aa;
+}
+
+.room-code { font-size: 16px; }
+.room-code b { font-size: 26px; letter-spacing: 0.12em; margin-left: 6px; }
+
+.net-error {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(239, 83, 80, 0.18);
+  color: #ff8a80;
+  font-size: 13px;
+}
+
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 0;
+  background: #607d8b;
+}
+
+.dot.on { background: #66bb6a; box-shadow: 0 0 6px #66bb6a; }
+.dot.off { background: #ef5350; }
+.dot.wait { background: #ffb74d; }
+
+#turn .netline {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #cfd8dc;
+  cursor: pointer;
+}
+
+#btnOnline { width: 100%; }
 
 /* ----- Телефон и планшет ----- */
 .short { display: none; }

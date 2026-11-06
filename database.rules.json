@@ -1,0 +1,23 @@
+{
+  "rules": {
+    "rooms": {
+      "$code": {
+        ".read": "auth != null",
+        "created": {
+          ".write": "auth != null && !data.exists()"
+        },
+        "players": {
+          "host": {
+            ".write": "auth != null && !data.exists() && newData.val() === auth.uid"
+          },
+          "guest": {
+            ".write": "auth != null && !data.exists() && newData.val() === auth.uid && data.parent().child('host').exists() && data.parent().child('host').val() !== auth.uid"
+          }
+        },
+        "$other": {
+          ".write": "auth != null && $other !== 'players' && $other !== 'created' && (data.parent().child('players/host').val() === auth.uid || data.parent().child('players/guest').val() === auth.uid)"
+        }
+      }
+    }
+  }
+}

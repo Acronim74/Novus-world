@@ -15,9 +15,10 @@ function makeShotRecord(p) {
   };
 }
 
-function shoot() {
-  // Против компьютера откат возвращает к последнему удару человека.
-  if (!isAI(current)) snapshot = takeSnapshot();
+function shoot(seed = (Math.random() * 4294967296) >>> 0) {
+  // Против компьютера откат возвращает к последнему удару человека; по сети отката нет.
+  if (!isAI(current) && !net.active) snapshot = takeSnapshot();
+  seedPhysics(seed);
   const speed = cfg.vMax * aim.power;
   striker.vx = aim.dirX * speed;
   striker.vy = aim.dirY * speed;
@@ -25,6 +26,7 @@ function shoot() {
   phase = 'moving';
   aim.charging = false;
   log(`${PLAYERS[current].name}${isAI(current) ? ' (компьютер)' : ''}: удар, сила ${Math.round(aim.power * 100)}%`, 'shot');
+  netShotStarted(seed);
   updatePanel();
 }
 

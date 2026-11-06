@@ -131,6 +131,7 @@ function resize() {
 }
 
 function flipped() {
+  if (net.active) return net.seat === 1;
   return cfg.flip && current === 1;
 }
 
@@ -187,8 +188,8 @@ function draw() {
     if (cfg.hint) drawHint();
     drawCue();
   }
-  if (phase === 'ai' && aiShowCue) drawCue();
-  if ((phase === 'place' || phase === 'ai') && cfg.powerSide !== 'off') drawPowerGauge();
+  if ((phase === 'ai' && aiShowCue) || (phase === 'remote' && net.peerAiming)) drawCue();
+  if ((phase === 'place' || phase === 'ai' || phase === 'remote') && cfg.powerSide !== 'off') drawPowerGauge();
   if (toast && performance.now() < toast.until) drawToast();
   if (phase === 'over') drawBanner(winnerText);
 }

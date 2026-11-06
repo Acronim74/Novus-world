@@ -17,7 +17,11 @@ function frame(now) {
     }
     if (allStopped()) {
       accumulator = 0;
-      endShot();
+      // Чужой сетевой удар судит тот, кто бил: ждём его итог и ставим фишки по нему.
+      if (!netRemoteShotStopped()) {
+        endShot();
+        netShotResolved();
+      }
     }
   }
   draw();

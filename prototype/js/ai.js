@@ -28,7 +28,7 @@ function gauss() {
 }
 
 function isAI(p) {
-  return cfg.mode === 'ai' && p === AI_PLAYER;
+  return !net.active && cfg.mode === 'ai' && p === AI_PLAYER;
 }
 
 function maybeStartAI() {

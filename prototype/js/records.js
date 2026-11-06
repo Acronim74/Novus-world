@@ -28,8 +28,9 @@ function recordGame(winner, score) {
   games.push({
     id: gameId,
     at: Date.now(),
-    mode: cfg.mode,
+    mode: net.active ? 'online' : cfg.mode,
     level: cfg.level,
+    ...(net.active ? { seat: net.seat, peer: net.peerName || '' } : {}),
     winner,
     score,
     fouls: stats.map(s => s.fouls),
@@ -44,10 +45,14 @@ function forgetGame(id) {
   renderRecords();
 }
 
+function mySeat(g) {
+  return g.mode === 'online' ? g.seat : HUMAN_PLAYER;
+}
+
 function gameResult(g) {
   if (g.winner === null) return 'draw';
-  if (g.mode !== 'ai') return g.winner === 0 ? 'red' : 'black';
-  return g.winner === HUMAN_PLAYER ? 'win' : 'loss';
+  if (g.mode === 'hotseat') return g.winner === 0 ? 'red' : 'black';
+  return g.winner === mySeat(g) ? 'win' : 'loss';
 }
 
 function summarize(games) {
@@ -57,8 +62,8 @@ function summarize(games) {
     if (r === 'win') s.win++;
     else if (r === 'loss') s.loss++;
     else s.draw++;
-    s.mine += g.score[HUMAN_PLAYER];
-    s.theirs += g.score[AI_PLAYER];
+    s.mine += g.score[mySeat(g)];
+    s.theirs += g.score[1 - mySeat(g)];
   }
   return s;
 }
@@ -107,7 +112,8 @@ function renderRecords() {
   if (!box) return;
   const games = loadRecords();
   const ai = games.filter(g => g.mode === 'ai');
-  const hot = games.filter(g => g.mode !== 'ai');
+  const hot = games.filter(g => g.mode === 'hotseat');
+  const online = games.filter(g => g.mode === 'online');
 
   if (!games.length) {
     box.innerHTML = '<div class="empty">Сыгранных партий пока нет. Партия попадает сюда, когда одна из сторон забьёт все 8 пешек.</div>';
@@ -128,6 +134,13 @@ function renderRecords() {
       `<div class="streak">Серия побед сейчас: <b>${run}</b> · лучшая: <b>${best}</b></div>`;
   }
 
+  if (online.length) {
+    const s = summarize(online);
+    html += '<h3>По сети</h3>' +
+      `<div class="duo">Игр: <b>${s.n}</b> · побед: <b class="w">${s.win}</b> · поражений: <b class="l">${s.loss}</b>` +
+      ` · ${percent(s.win, s.win + s.loss)}<br><small>Пешки за все партии — вы ${s.mine} : ${s.theirs} соперники</small></div>`;
+  }
+
   if (hot.length) {
     const red = hot.filter(g => g.winner === 0).length;
     const black = hot.filter(g => g.winner === 1).length;
@@ -142,8 +155,9 @@ function renderRecords() {
   html += '<h3>Последние партии</h3><div class="recent">' +
     games.slice(-15).reverse().map(g => {
       const [label, cls] = RESULT_LABELS[gameResult(g)];
-      const who = g.mode === 'ai' ? AI_LEVELS[g.level]?.name ?? '' : 'вдвоём';
-      const score = g.mode === 'ai' ? `${g.score[HUMAN_PLAYER]} : ${g.score[AI_PLAYER]}` : `${g.score[0]} : ${g.score[1]}`;
+      const who = g.mode === 'ai' ? AI_LEVELS[g.level]?.name ?? ''
+        : g.mode === 'online' ? `по сети${g.peer ? `, ${escapeHtml(g.peer)}` : ''}` : 'вдвоём';
+      const score = g.mode === 'hotseat' ? `${g.score[0]} : ${g.score[1]}` : `${g.score[mySeat(g)]} : ${g.score[1 - mySeat(g)]}`;
       return `<div class="game ${cls}"><span class="res">${label}</span><span class="sc">${score}</span>` +
         `<span class="meta">${who} · ${formatWhen(g.at)} · ${formatDuration(g.seconds)}</span></div>`;
     }).join('') + '</div>';

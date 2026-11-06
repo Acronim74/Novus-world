@@ -44,7 +44,17 @@
     </aside>
   </div>
 
-  <div id="records" class="closed">
+  <div id="online" class="modal closed">
+    <div class="sheet" role="dialog" aria-label="Игра по сети">
+      <div class="drawer-head">
+        <span>Игра по сети с другом</span>
+        <button id="btnOnlineClose" title="Закрыть">✕</button>
+      </div>
+      <div id="onlineBody"></div>
+    </div>
+  </div>
+
+  <div id="records" class="modal closed">
     <div class="sheet" role="dialog" aria-label="Статистика партий">
       <div class="drawer-head">
         <span>Статистика партий</span>
@@ -79,6 +89,7 @@
         </select>
       </label>
     </div>
+    <button id="btnOnline" class="primary">🌐 Играть по сети с другом</button>
 
     <details class="block">
       <summary>Управление</summary>
@@ -148,6 +159,8 @@
   <script src="js/render.js"></script>
   <script src="js/input.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/net-config.js"></script>
+  <script src="js/net.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

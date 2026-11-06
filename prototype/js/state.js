@@ -59,7 +59,7 @@ function newGame() {
 }
 
 function startTurn() {
-  phase = 'place';
+  phase = net.active && current !== net.seat ? 'remote' : 'place';
   Object.assign(striker, { state: 'table', vx: 0, vy: 0, z: 0, vz: 0, sink: 0, sinkV: 0, climb: null, owner: current });
   const spot = findStrikerSpot(current);
   striker.x = spot.x;

@@ -1,6 +1,21 @@
 'use strict';
 
 // ===== Физика =====
+// Случайность физики (подскоки, вылеты) идёт от зерна удара — в сетевой игре оба игрока видят один и тот же удар.
+let physState = 1;
+
+function seedPhysics(seed) {
+  physState = seed >>> 0 || 1;
+}
+
+function physRandom() {
+  physState = (physState + 0x6d2b79f5) >>> 0;
+  let t = physState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
 function physicsStep(dt) {
   const live = bodies.filter(b => b.state === 'table');
   for (const b of live) integrate(b, dt);
@@ -80,8 +95,8 @@ function collidePucks(a, b) {
   popUp(b, vrel);
 
   if (vrel > cfg.hopThr) {
-    const light = a.m < b.m ? a : b.m < a.m ? b : (Math.random() < 0.5 ? a : b);
-    light.vz += (vrel - cfg.hopThr) * cfg.hopK * (0.5 + Math.random());
+    const light = a.m < b.m ? a : b.m < a.m ? b : (physRandom() < 0.5 ? a : b);
+    light.vz += (vrel - cfg.hopThr) * cfg.hopK * (0.5 + physRandom());
   }
 }
 
@@ -126,9 +141,9 @@ function collideRails(b) {
     const vn = -(b.vx * rail.nx + b.vy * rail.ny);
     if (vn > 0) {
       const excess = vn - cfg.climbThr[b.kind];
-      if (excess > 0 && Math.random() < Math.min(0.85, excess / cfg.climbRange)) {
+      if (excess > 0 && physRandom() < Math.min(0.85, excess / cfg.climbRange)) {
         b.climb = rail.side;
-        b.vz = Math.max(b.vz, 700 + Math.random() * 300);
+        b.vz = Math.max(b.vz, 700 + physRandom() * 300);
         b.vx *= 0.6;
         b.vy *= 0.6;
         noteRail(b, rail.side);
