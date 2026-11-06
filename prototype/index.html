@@ -23,7 +23,8 @@
 
       <div class="buttons">
         <button id="btnUndo"><span class="full">Вернуть позицию до удара</span><span class="short">↶ Отменить</span></button>
-        <button id="btnNew">Новая партия</button>
+        <button id="btnNew"><span class="full">Новая партия</span><span class="short">Новая</span></button>
+        <button id="btnRecords">📊 Статистика</button>
         <button id="btnDrawer">⚙ <span class="full">Настройки и журнал</span><span class="short">Настройки</span></button>
       </div>
     </aside>
@@ -41,6 +42,20 @@
       <h2>Нарушения</h2>
       <div id="fouls"></div>
     </aside>
+  </div>
+
+  <div id="records" class="closed">
+    <div class="sheet" role="dialog" aria-label="Статистика партий">
+      <div class="drawer-head">
+        <span>Статистика партий</span>
+        <button id="btnRecordsClose" title="Закрыть">✕</button>
+      </div>
+      <div id="recordsBody"></div>
+      <div class="sheet-foot">
+        <span class="note">Хранится только в этом браузере на этом устройстве.</span>
+        <button id="btnRecordsReset">Сбросить</button>
+      </div>
+    </div>
   </div>
 
   <div id="drawer" class="closed">
@@ -129,6 +144,7 @@
   <script src="js/physics.js"></script>
   <script src="js/referee.js"></script>
   <script src="js/ai.js"></script>
+  <script src="js/records.js"></script>
   <script src="js/render.js"></script>
   <script src="js/input.js"></script>
   <script src="js/ui.js"></script>

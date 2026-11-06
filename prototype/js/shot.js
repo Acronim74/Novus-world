@@ -40,6 +40,7 @@ function takeSnapshot() {
 
 function restoreSnapshot() {
   if (!snapshot || phase === 'moving') return;
+  if (phase === 'over') forgetGame(gameId);
   aiToken++;
   snapshot.bodies.forEach((s, i) => Object.assign(bodies[i], s));
   current = snapshot.current;

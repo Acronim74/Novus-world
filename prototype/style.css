@@ -416,6 +416,109 @@ label.range input {
 #log li.ok { color: #a5d6a7; }
 #log li.info { color: #8fa0aa; }
 
+/* ----- Статистика партий ----- */
+#records {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  transition: opacity 0.2s;
+}
+
+#records.closed {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#records .sheet {
+  width: min(520px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+  border-radius: 10px;
+  background: #262d32;
+  border: 1px solid #333c42;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+#recordsBody h3 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8fa0aa;
+}
+
+#recordsBody .empty {
+  margin-top: 12px;
+  color: #8fa0aa;
+}
+
+table.rec {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table.rec th, table.rec td {
+  padding: 5px 4px;
+  text-align: center;
+  border-bottom: 1px solid #333c42;
+}
+
+table.rec th {
+  font-weight: normal;
+  color: #8fa0aa;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+table.rec th:first-child, table.rec td:first-child { text-align: left; }
+table.rec td.w { color: #a5d6a7; }
+table.rec td.l { color: #ff8a80; }
+table.rec tr.none td { color: #5f6c74; }
+table.rec tr.total td { font-weight: 700; border-bottom: none; }
+
+.streak, .duo {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #cfd8dc;
+}
+
+.duo small { color: #8fa0aa; }
+
+.recent .game {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: #1f2529;
+  border-left: 3px solid #607d8b;
+  font-size: 13px;
+}
+
+.recent .game.ok { border-left-color: #66bb6a; }
+.recent .game.bad { border-left-color: #ef5350; }
+.recent .res { font-weight: 600; }
+.recent .sc { font-weight: 700; text-align: right; }
+.recent .meta { grid-column: 1 / -1; font-size: 12px; color: #8fa0aa; }
+
+.sheet-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.sheet-foot .note { flex: 1; margin: 0; }
+
 /* ----- Телефон и планшет ----- */
 .short { display: none; }
 #touchBar { display: none; }
@@ -546,7 +649,6 @@ label.range input {
   }
 
   .buttons button { padding: 4px; }
-  #btnDrawer { grid-column: 1 / -1; }
   .full { display: none; }
   .short { display: inline; }
 

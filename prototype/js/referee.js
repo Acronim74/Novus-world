@@ -96,15 +96,19 @@ function endShot() {
   if (keepTurn && pawnsOnTable(p) === 0 && debt[p] > 0) payDebt(p);
 
   const left = [pawnsOnTable(0) + debt[0], pawnsOnTable(1) + debt[1]];
+  let winner;
   if (left[0] === 0 && left[1] === 0) {
+    winner = null;
     winnerText = 'Обе стороны забили все пешки — сет переигрывается (п. 20.5)';
   } else if (left[0] === 0 || left[1] === 0) {
-    winnerText = `${PLAYERS[left[0] === 0 ? 0 : 1].name} выиграли сет!`;
+    winner = left[0] === 0 ? 0 : 1;
+    winnerText = `${PLAYERS[winner].name} выиграли сет!`;
   }
 
   shot = null;
   if (winnerText) {
     phase = 'over';
+    recordGame(winner, left.map(n => 8 - n));
     log(winnerText, 'ok');
     setLastShot(p, items, { cls: 'win', text: winnerText });
     updatePanel();

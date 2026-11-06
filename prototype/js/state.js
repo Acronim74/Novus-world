@@ -12,6 +12,8 @@ let winnerText = null;
 let stats = [newStats(), newStats()];
 let lastShot = null;
 let toast = null;
+let gameId = 0;
+let gameStartedAt = 0;
 
 function newStats() {
   return { fouls: 0, strikerLost: 0, pawnsOut: 0, oppIn: 0, history: [] };
@@ -49,6 +51,8 @@ function newGame() {
   stats = [newStats(), newStats()];
   lastShot = null;
   toast = null;
+  gameId = Date.now();
+  gameStartedAt = gameId;
   clearLog();
   log('Новая партия. Первыми бьют красные (снизу).', 'info');
   startTurn();
