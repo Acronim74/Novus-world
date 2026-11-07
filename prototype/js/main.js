@@ -3,6 +3,7 @@
 // ===== Главный цикл =====
 let lastTime = performance.now();
 let accumulator = 0;
+let prevFrame = performance.now();
 
 function frame(now) {
   const dt = Math.min(0.05, (now - lastTime) / 1000);
@@ -24,6 +25,17 @@ function frame(now) {
       }
     }
   }
+  if (turnDeadline && phase === 'place') {
+    // Пока открыто окно или настройки, время на удар не идёт; по сети — идёт, чтобы соперник не ждал.
+    if (!net.active && overlayOpen()) turnDeadline += now - prevFrame;
+    else if (now >= turnDeadline) {
+      turnDeadline = 0;
+      if (net.active) netTimedOut();
+      else timeoutShot();
+    }
+  }
+  prevFrame = now;
+  updateTimer(now);
   draw();
   requestAnimationFrame(frame);
 }
@@ -31,5 +43,6 @@ function frame(now) {
 new ResizeObserver(resize).observe(document.getElementById('stage'));
 coarsePointer.addEventListener('change', resize);
 resize();
+refreshControls();
 newGame();
 requestAnimationFrame(frame);

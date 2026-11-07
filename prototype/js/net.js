@@ -271,14 +271,17 @@ function onPlayers(players) {
   renderOnline();
 }
 
+// Время на удар задаёт тот, кто начинает партию, — оно одинаково у обоих игроков.
 function startRoomGame(n, red) {
-  return net.backend.set(roomPath('game'), { n, red });
+  return net.backend.set(roomPath('game'), { n, red, t: cfg.shotTime });
 }
 
 async function onGame(g) {
   if (!g || g.n === net.game) return;
   net.game = g.n;
   net.red = g.red;
+  cfg.shotTime = g.t || 0;
+  refreshControls();
   net.seat = g.red === net.uid ? 0 : 1;
   net.active = true;
   net.seq = 0;
@@ -315,7 +318,6 @@ function leaveRoom() {
 }
 
 function netNewGame() {
-  if (phase !== 'over' && !confirm('Начать новую партию? У соперника она тоже начнётся заново.')) return;
   // Цвета меняются: в следующей партии первым бьёт другой игрок.
   startRoomGame(net.game + 1, net.red === net.uid ? net.peerUid : net.uid);
 }
@@ -354,6 +356,14 @@ function serializeState() {
     current, debt, stats, lastShot, winnerText,
     over: phase === 'over',
   };
+}
+
+// Время вышло у того, кто бьёт: он же судит и рассылает позицию, как после удара.
+function netTimedOut() {
+  net.seq++;
+  net.myShotSeq = net.seq;
+  timeoutShot();
+  netShotResolved();
 }
 
 function netShotResolved() {
@@ -464,19 +474,31 @@ function renderOnline() {
   document.getElementById('btnOnline').innerHTML = net.code
     ? `🌐 <span class="full">Комната ${net.code}</span><span class="short">${net.code}</span>`
     : '🌐 <span class="full">Играть по сети с другом</span><span class="short">По сети</span>';
+  document.getElementById('tabOnlineLabel').textContent = net.code || 'По сети';
+  document.getElementById('tabOnline').classList.toggle('live', Boolean(net.code));
   const box = document.getElementById('onlineBody');
   if (!box) return;
   const err = onlineError ? `<div class="net-error">${escapeHtml(onlineError)}</div>` : '';
+  const busy = onlineBusy ? ' disabled' : '';
   if (!net.code) {
+    const nameField = '<label class="field">Ваше имя<input class="netName" maxlength="20" placeholder="необязательно" autocomplete="nickname"></label>';
     box.innerHTML =
-      '<label class="field">Ваше имя<input id="netName" maxlength="20" placeholder="необязательно"></label>' +
-      `<button id="netCreate" class="primary"${onlineBusy ? ' disabled' : ''}>Создать комнату</button>` +
-      '<div class="or">или войдите по коду от друга</div>' +
-      `<div class="join"><input id="netCode" maxlength="7" placeholder="Код, например K7P4Q" autocapitalize="characters" autocomplete="off">` +
-      `<button id="netJoin"${onlineBusy ? ' disabled' : ''}>Войти</button></div>` + err;
-    const name = document.getElementById('netName');
-    name.value = myName();
-    name.addEventListener('change', () => localStorage.setItem(NAME_KEY, name.value.trim()));
+      '<div class="halves">' +
+      '<section class="half"><h3>Создать комнату</h3>' + nameField +
+      `<button id="netCreate" class="primary"${busy}>Создать комнату</button>` +
+      '<div class="tip">Появятся код и ссылка — отправьте их другу.</div></section>' +
+      '<section class="half"><h3>Войти в комнату</h3>' + nameField +
+      '<label class="field">Код комнаты<input id="netCode" maxlength="7" placeholder="например K7P4Q" autocapitalize="characters" autocomplete="off"></label>' +
+      `<button id="netJoin" class="primary"${busy}>Войти</button></section>` +
+      '</div>' + err;
+    const names = [...box.querySelectorAll('.netName')];
+    for (const name of names) {
+      name.value = myName();
+      name.addEventListener('input', () => {
+        for (const other of names) if (other !== name) other.value = name.value;
+        localStorage.setItem(NAME_KEY, name.value.trim());
+      });
+    }
     document.getElementById('netCreate').addEventListener('click', () => runOnline(createRoom));
     const code = document.getElementById('netCode');
     const join = () => runOnline(() => joinRoom(code.value));
@@ -540,10 +562,12 @@ function closeOnline() {
   onlineDialog.classList.add('closed');
 }
 
-document.getElementById('btnOnline').addEventListener('click', () => {
-  closeDrawer();
-  openOnline();
-});
+for (const id of ['btnOnline', 'tabOnline']) {
+  document.getElementById(id).addEventListener('click', () => {
+    closeDrawer();
+    openOnline();
+  });
+}
 document.getElementById('btnOnlineClose').addEventListener('click', closeOnline);
 document.getElementById('turn').addEventListener('click', e => {
   if (e.target.closest('.netline')) openOnline();

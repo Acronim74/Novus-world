@@ -14,6 +14,7 @@ let lastShot = null;
 let toast = null;
 let gameId = 0;
 let gameStartedAt = 0;
+let turnDeadline = 0;
 
 function newStats() {
   return { fouls: 0, strikerLost: 0, pawnsOut: 0, oppIn: 0, history: [] };
@@ -68,6 +69,12 @@ function startTurn() {
   aim.dirY = PLAYERS[current].rail === 'bottom' ? -1 : 1;
   aim.power = 0;
   aim.charging = false;
+  resetTurnTimer();
   updatePanel();
   maybeStartAI();
+}
+
+// Компьютер бьёт без ограничения; в сетевой игре время на чужой удар только показывается.
+function resetTurnTimer() {
+  turnDeadline = cfg.shotTime && !isAI(current) ? performance.now() + cfg.shotTime * 1000 : 0;
 }

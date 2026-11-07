@@ -132,6 +132,26 @@ function endShot() {
   startTurn();
 }
 
+// п. 17.1.15: удар не выполнен вовремя — штрафная пешка, ход переходит.
+function timeoutShot() {
+  const p = current;
+  if (!isAI(p) && !net.active) snapshot = takeSnapshot();
+  drag = null;
+  aim.charging = false;
+  aim.power = 0;
+  log(`${PLAYERS[p].name}: время на удар (${cfg.shotTime} с) истекло. Штрафная пешка.`, 'foul');
+  const debtBefore = debt[p];
+  placePenaltyPawn(p);
+  const toDebt = debt[p] > debtBefore;
+  stats[p].fouls++;
+  stats[p].history.unshift('время на удар истекло (п. 17.1.15)');
+  if (debt[p] > 0) payDebt(p);
+  setLastShot(p, [{ cls: 'bad', icon: '⏱', text: `Время на удар (${cfg.shotTime} с) истекло. ${toDebt ? 'Штрафная пешка в долг' : 'Штрафная пешка выставлена'}` }],
+    { cls: 'foul', text: 'Время вышло. Штраф, ход переходит' });
+  current = 1 - p;
+  startTurn();
+}
+
 function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }

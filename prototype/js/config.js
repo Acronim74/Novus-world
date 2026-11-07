@@ -44,10 +44,18 @@ const RAILS = [
 // Коэффициенты трения скольжения дерева по лакированной фанере. Порошок снижает трение в 3–4 раза.
 // Шайба по правилам не окрашена и не лакирована, пешки окрашены и с углублением на нижней стороне.
 const TABLE_STATES = {
-  fresh: { name: 'Свежая натирка порошком', muStriker: 0.07, muPawn: 0.06 },
-  normal: { name: 'Обычная натирка', muStriker: 0.10, muPawn: 0.09 },
-  worn: { name: 'Порошок стёрся', muStriker: 0.15, muPawn: 0.14 },
-  bare: { name: 'Без порошка', muStriker: 0.28, muPawn: 0.26 },
+  fresh: { name: 'Свежая натирка порошком', note: 'Очень скользко: фишки катятся далеко, бить нужно мягче.', muStriker: 0.07, muPawn: 0.06 },
+  normal: { name: 'Обычная натирка', note: 'Как на ухоженном клубном столе.', muStriker: 0.10, muPawn: 0.09 },
+  worn: { name: 'Порошок стёрся', note: 'Фишки останавливаются быстрее, нужен удар посильнее.', muStriker: 0.15, muPawn: 0.14 },
+  bare: { name: 'Без порошка', note: 'Тяжёлый стол: фишки тормозят, слабые удары не доходят.', muStriker: 0.28, muPawn: 0.26 },
+};
+
+// Подсказка траектории: сколько пути показать и сколько отскоков от бортов.
+const HINT_MODES = {
+  off: { note: 'Без подсказки — как за настоящим столом.' },
+  short: { len: 220, bounces: 0, target: false, note: 'Короткий отрезок от шайбы — только направление.' },
+  mid: { len: Infinity, bounces: 0, target: false, note: 'Линия до первого касания пешки или борта.' },
+  full: { len: Infinity, bounces: 2, target: true, note: 'Полная линия: отскоки от бортов и куда пойдёт пешка.' },
 };
 
 const cfg = {
@@ -68,7 +76,8 @@ const cfg = {
   hopK: 0.16,
   mode: 'ai',
   level: 2,
-  hint: true,
+  hintLen: 'full',
+  shotTime: 0,
   powerSide: 'right',
   circleDark: true,
   freePlace: false,

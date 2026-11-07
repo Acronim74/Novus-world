@@ -54,6 +54,7 @@ function restoreSnapshot() {
   phase = 'place';
   aim.power = 0;
   aiShowCue = false;
+  resetTurnTimer();
   log('Позиция возвращена к моменту перед ударом.', 'info');
   updatePanel();
   maybeStartAI();

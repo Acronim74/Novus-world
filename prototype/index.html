@@ -23,8 +23,9 @@
 
       <div class="buttons">
         <button id="btnOnline" class="primary">🌐 <span class="full">Играть по сети с другом</span><span class="short">По сети</span></button>
-        <button id="btnUndo"><span class="full">Вернуть позицию до удара</span><span class="short">↶ Отмена</span></button>
+        <button id="btnUndo" class="undo"><span class="full">Вернуть позицию до удара</span><span class="short">↶ Отмена</span></button>
         <button id="btnNew"><span class="full">Новая партия</span><span class="short">Новая</span></button>
+        <button id="btnLevel">🎯<span class="full"> Сложность и время</span></button>
         <button id="btnRecords">📊<span class="full"> Статистика</span></button>
         <button id="btnDrawer">⚙<span class="full"> Настройки и журнал</span></button>
       </div>
@@ -36,6 +37,7 @@
       <div id="touchBar">
         <button id="btnRotL" aria-label="Повернуть прицел против часовой стрелки">⟲</button>
         <span>Точный прицел</span>
+        <button id="btnUndoTouch" class="undo">↶ Отменить удар</button>
         <button id="btnRotR" aria-label="Повернуть прицел по часовой стрелке">⟳</button>
       </div>
       <h2>Последний удар</h2>
@@ -43,6 +45,103 @@
       <h2>Нарушения</h2>
       <div id="fouls"></div>
     </aside>
+  </div>
+
+  <nav id="tabbar">
+    <button id="tabOnline" data-tab="online">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>
+      <span id="tabOnlineLabel">По сети</span>
+    </button>
+    <button id="tabNew" data-tab="new">
+      <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
+      <span>Новая партия</span>
+    </button>
+    <button id="tabSettings" data-tab="settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Настройки</span>
+    </button>
+    <button id="tabLevel" data-tab="level">
+      <svg viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+      <span>Сложность</span>
+    </button>
+  </nav>
+
+  <div id="confirmNew" class="modal closed">
+    <div class="sheet small" role="dialog" aria-label="Новая партия">
+      <div class="drawer-head">
+        <span>Новая партия</span>
+        <button class="close" title="Закрыть">✕</button>
+      </div>
+      <p id="confirmNewText"></p>
+      <div class="sheet-actions">
+        <button class="close">Отмена</button>
+        <button id="btnConfirmNew" class="primary">Начать новый сет</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="level" class="modal closed">
+    <div class="sheet" role="dialog" aria-label="Сложность">
+      <div class="drawer-head">
+        <span>Сложность</span>
+        <button class="close" title="Закрыть">✕</button>
+      </div>
+      <div id="levelNetNote" class="tip"></div>
+
+      <div class="group">
+        <div class="group-title">Соперник</div>
+        <div class="seg" id="optMode">
+          <button data-v="ai">Компьютер</button>
+          <button data-v="hotseat">Вдвоём на одном устройстве</button>
+        </div>
+      </div>
+
+      <div class="group" id="groupLevel">
+        <div class="group-title">Уровень компьютера</div>
+        <div class="seg" id="optLevel">
+          <button data-v="1">Новичок</button>
+          <button data-v="2">Любитель</button>
+          <button data-v="3">Мастер</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Натирка стола</div>
+        <div class="seg" id="optTable">
+          <button data-v="fresh">Свежая</button>
+          <button data-v="normal">Обычная</button>
+          <button data-v="worn">Стёрлась</button>
+          <button data-v="bare">Без порошка</button>
+        </div>
+        <div class="tip" id="tableNote"></div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Помощь при прицеливании</div>
+        <div class="seg" id="optHintLen">
+          <button data-v="off">Нет</button>
+          <button data-v="short">Короткая</button>
+          <button data-v="mid">До касания</button>
+          <button data-v="full">С отскоками</button>
+        </div>
+        <div class="tip" id="hintNote"></div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Время на удар</div>
+        <div class="seg" id="optShotTime">
+          <button data-v="0">Без лимита</button>
+          <button data-v="30">30 с</button>
+          <button data-v="20">20 с</button>
+          <button data-v="10">10 с</button>
+        </div>
+        <div class="tip" id="timeNote"></div>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="close primary">Готово</button>
+      </div>
+    </div>
   </div>
 
   <div id="online" class="modal closed">
@@ -75,21 +174,7 @@
       <button id="btnDrawerClose" title="Закрыть">✕</button>
     </div>
 
-    <div class="block mode">
-      <label>Режим
-        <select id="optMode">
-          <option value="ai">Против компьютера</option>
-          <option value="hotseat">Вдвоём за одним компьютером</option>
-        </select>
-      </label>
-      <label>Сложность
-        <select id="optLevel">
-          <option value="1">Новичок</option>
-          <option value="2">Любитель</option>
-          <option value="3">Мастер</option>
-        </select>
-      </label>
-    </div>
+    <button id="btnRecordsDrawer">📊 Статистика партий</button>
     <details class="block">
       <summary>Управление</summary>
       <ul class="help">
@@ -111,7 +196,6 @@
 
     <details class="block">
       <summary>Вид</summary>
-      <label class="check"><input type="checkbox" id="optHint" checked> Подсказка траектории</label>
       <label class="select">Шкала силы удара на борту
         <select id="optPowerSide">
           <option value="right">Справа</option>
@@ -125,14 +209,7 @@
 
     <details class="block">
       <summary>Физика</summary>
-      <label class="select">Состояние стола
-        <select id="optTable">
-          <option value="fresh">Свежая натирка порошком</option>
-          <option value="normal">Обычная натирка</option>
-          <option value="worn">Порошок стёрся</option>
-          <option value="bare">Без порошка</option>
-        </select>
-      </label>
+      <div class="note">Натирку стола удобнее выбирать в окне «Сложность», здесь — точная подстройка.</div>
       <label class="range">Трение шайбы, μ <span></span><input type="range" id="optMuStriker" min="0.03" max="0.35" step="0.01"></label>
       <label class="range">Трение пешек, μ <span></span><input type="range" id="optMuPawn" min="0.03" max="0.35" step="0.01"></label>
       <label class="range">Упругость удара фишек <span></span><input type="range" id="optPuckE" min="0.4" max="0.95" step="0.01"></label>

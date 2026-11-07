@@ -177,6 +177,7 @@ function closeRecords() {
 }
 
 document.getElementById('btnRecords').addEventListener('click', openRecords);
+document.getElementById('btnRecordsDrawer').addEventListener('click', openRecords);
 document.getElementById('btnRecordsClose').addEventListener('click', closeRecords);
 recordsDialog.addEventListener('click', e => {
   if (e.target === recordsDialog) closeRecords();

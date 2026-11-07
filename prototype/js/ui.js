@@ -36,7 +36,9 @@ function updatePanel() {
     : '';
   document.getElementById('turn').innerHTML =
     `<span class="chip" style="background:${pl.color}"></span>Бьют <b>${pl.name}</b>` +
+    '<span id="shotTimer" class="timer"></span>' +
     `<span class="hint">${hint}</span>${room}`;
+  timerShown = null;
 
   document.getElementById('scoreboard').innerHTML = PLAYERS.map((p, i) => {
     const onTable = pawnsOnTable(i);
@@ -56,9 +58,22 @@ function updatePanel() {
       `</div>`;
   }).join('');
 
-  document.getElementById('btnUndo').disabled = !snapshot || phase === 'moving' || net.active;
+  for (const b of document.querySelectorAll('.undo')) b.disabled = !snapshot || phase === 'moving' || net.active;
   updatePower();
   renderSidePanels();
+}
+
+let timerShown = null;
+
+function updateTimer(now) {
+  const active = turnDeadline && (phase === 'place' || phase === 'remote');
+  const secs = active ? Math.max(0, Math.ceil((turnDeadline - now - 50) / 1000)) : -1;
+  if (secs === timerShown) return;
+  timerShown = secs;
+  const el = document.getElementById('shotTimer');
+  if (!el) return;
+  el.textContent = secs >= 0 ? `⏱ ${secs}` : '';
+  el.classList.toggle('low', secs >= 0 && secs <= 5);
 }
 
 function escapeHtml(s) {
@@ -122,7 +137,37 @@ function bindSelect(id, get, set) {
   el.addEventListener('change', () => set(el.value));
 }
 
-bindSelect('optMode', () => cfg.mode, v => {
+// Переключатель из нескольких кнопок: подсвечена та, чьё значение сейчас в настройках.
+const segRefreshers = [];
+
+function bindSeg(id, get, set) {
+  const el = document.getElementById(id);
+  const refresh = () => {
+    for (const b of el.querySelectorAll('button[data-v]')) b.classList.toggle('on', b.dataset.v === String(get()));
+  };
+  el.addEventListener('click', e => {
+    const b = e.target.closest('button[data-v]');
+    if (!b) return;
+    set(b.dataset.v);
+    refreshControls();
+  });
+  segRefreshers.push(refresh);
+}
+
+function refreshControls() {
+  for (const refresh of segRefreshers) refresh();
+  document.getElementById('groupLevel').classList.toggle('dim', cfg.mode !== 'ai' || net.active);
+  document.getElementById('tableNote').textContent = TABLE_STATES[cfg.table].note;
+  document.getElementById('hintNote').textContent = HINT_MODES[cfg.hintLen].note;
+  document.getElementById('timeNote').textContent = cfg.shotTime
+    ? `Не успели ударить за ${cfg.shotTime} с — штрафная пешка и ход переходит (п. 17.1.15).`
+    : 'Думайте над ударом сколько угодно.';
+  document.getElementById('levelNetNote').textContent = net.active
+    ? 'Идёт игра по сети: компьютер не участвует, а время на удар задаёт тот, кто начинает партию.'
+    : '';
+}
+
+bindSeg('optMode', () => cfg.mode, v => {
   cfg.mode = v;
   if (net.code) {
     leaveRoom();
@@ -132,15 +177,20 @@ bindSelect('optMode', () => cfg.mode, v => {
   aiShowCue = false;
   if (phase === 'ai') startTurn();
   else {
+    resetTurnTimer();
     updatePanel();
     maybeStartAI();
   }
 });
-bindSelect('optLevel', () => cfg.level, v => {
+bindSeg('optLevel', () => cfg.level, v => {
   cfg.level = Number(v);
   updatePanel();
 });
-bindCheck('optHint', 'hint');
+bindSeg('optHintLen', () => cfg.hintLen, v => { cfg.hintLen = v; });
+bindSeg('optShotTime', () => cfg.shotTime, v => {
+  cfg.shotTime = Number(v);
+  if (phase === 'place' || phase === 'remote') resetTurnTimer();
+});
 bindCheck('optFree', 'freePlace', () => {
   if (phase === 'place' && placementProblem(current, striker.x, striker.y)) {
     const spot = findStrikerSpot(current);
@@ -155,7 +205,7 @@ const muPawnInput = document.getElementById('optMuPawn');
 bindRange('optMuStriker', () => cfg.muStriker, v => { cfg.muStriker = v; });
 bindRange('optMuPawn', () => cfg.muPawn, v => { cfg.muPawn = v; });
 bindRange('optPuckE', () => cfg.puckE, v => { cfg.puckE = v; });
-bindSelect('optTable', () => cfg.table, v => {
+bindSeg('optTable', () => cfg.table, v => {
   cfg.table = v;
   cfg.muStriker = TABLE_STATES[v].muStriker;
   cfg.muPawn = TABLE_STATES[v].muPawn;
@@ -174,16 +224,71 @@ bindSelect('optPowerSide', () => cfg.powerSide, v => {
   resize();
 });
 
-document.getElementById('btnNew').addEventListener('click', () => (net.active ? netNewGame() : newGame()));
-document.getElementById('btnUndo').addEventListener('click', restoreSnapshot);
+for (const b of document.querySelectorAll('.undo')) b.addEventListener('click', restoreSnapshot);
 
+// ----- Окна и вкладки -----
 const drawer = document.getElementById('drawer');
+
+function openModal(id) {
+  closeDrawer();
+  document.getElementById(id).classList.remove('closed');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add('closed');
+}
+
+function overlayOpen() {
+  return !drawer.classList.contains('closed') || Boolean(document.querySelector('.modal:not(.closed)'));
+}
+
+for (const modal of document.querySelectorAll('.modal')) {
+  modal.addEventListener('click', e => {
+    if (e.target === modal || e.target.closest('.close')) modal.classList.add('closed');
+  });
+}
+
+function openDrawer() {
+  drawer.classList.remove('closed');
+  document.getElementById('tabSettings').classList.add('on');
+}
 
 function closeDrawer() {
   drawer.classList.add('closed');
+  document.getElementById('tabSettings').classList.remove('on');
 }
-document.getElementById('btnDrawer').addEventListener('click', () => drawer.classList.toggle('closed'));
-document.getElementById('btnDrawerClose').addEventListener('click', () => drawer.classList.add('closed'));
+
+function toggleDrawer() {
+  if (drawer.classList.contains('closed')) openDrawer();
+  else closeDrawer();
+}
+
+function askNewGame() {
+  document.getElementById('confirmNewText').textContent = net.active
+    ? 'Начать новый сет? У соперника он тоже начнётся заново, а цвета поменяются: первым бьёт другой игрок.'
+    : phase === 'over' ? 'Начать новый сет?' : 'Начать новый сет? Текущая партия будет прервана и не попадёт в статистику.';
+  openModal('confirmNew');
+}
+
+function openLevel() {
+  refreshControls();
+  openModal('level');
+}
+
+document.getElementById('btnConfirmNew').addEventListener('click', () => {
+  closeModal('confirmNew');
+  if (net.active) netNewGame();
+  else newGame();
+});
+document.getElementById('btnNew').addEventListener('click', askNewGame);
+document.getElementById('tabNew').addEventListener('click', askNewGame);
+document.getElementById('btnLevel').addEventListener('click', openLevel);
+document.getElementById('tabLevel').addEventListener('click', openLevel);
+document.getElementById('btnDrawer').addEventListener('click', toggleDrawer);
+document.getElementById('tabSettings').addEventListener('click', toggleDrawer);
+document.getElementById('btnDrawerClose').addEventListener('click', closeDrawer);
 window.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !drawer.classList.contains('closed')) drawer.classList.add('closed');
+  if (e.key !== 'Escape') return;
+  closeDrawer();
+  for (const modal of document.querySelectorAll('.modal')) modal.classList.add('closed');
 });

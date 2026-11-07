@@ -26,21 +26,27 @@ function castRay(px, py, dx, dy, r) {
   return best;
 }
 
-function drawHint() {
+function drawHint(mode) {
   let px = striker.x;
   let py = striker.y;
   let dx = aim.dirX;
   let dy = aim.dirY;
+  let left = mode.len;
   const r = striker.r;
   ctx.save();
   ctx.lineWidth = 1.5 * px1();
   ctx.setLineDash([8, 6]);
-  for (let bounce = 0; bounce < 3; bounce++) {
+  for (let bounce = 0; bounce <= mode.bounces; bounce++) {
     const hit = castRay(px, py, dx, dy, r);
     if (!hit.type) break;
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    if (hit.t > left) {
+      line(px, py, px + dx * left, py + dy * left);
+      break;
+    }
+    left -= hit.t;
     const hx = px + dx * hit.t;
     const hy = py + dy * hit.t;
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
     line(px, py, hx, hy);
 
     if (hit.type === 'pocket') {
@@ -53,6 +59,7 @@ function drawHint() {
       ctx.setLineDash([]);
       ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       circle(hx, hy, r, false);
+      if (!mode.target) break;
       const b = hit.body;
       const nx = (b.x - hx) / (r + b.r);
       const ny = (b.y - hy) / (r + b.r);
@@ -185,7 +192,7 @@ function draw() {
   for (const b of visible) drawPuck(b);
 
   if (phase === 'place') {
-    if (cfg.hint) drawHint();
+    if (cfg.hintLen !== 'off') drawHint(HINT_MODES[cfg.hintLen]);
     drawCue();
   }
   if ((phase === 'ai' && aiShowCue) || (phase === 'remote' && net.peerAiming)) drawCue();
