@@ -37,6 +37,7 @@ const net = {
   savedRules: null,
   reactSeen: null,
   reactAt: 0,
+  cleanupArmed: null,
 };
 
 // ----- Хранилище: Firebase или, для проверки, общая память вкладок одного браузера -----
@@ -94,12 +95,25 @@ const firebaseBackend = {
       ref.onDisconnect().remove();
       ref.set(true);
     };
+    this.presencePath = path;
     connected.on('value', handler);
     return () => {
       connected.off('value', handler);
+      this.presencePath = null;
       this.db.ref(path).onDisconnect().cancel();
       this.db.ref(path).remove();
     };
+  },
+  // Сервер удалит запись сам, когда этот игрок отключится (закрыл вкладку, пропала связь).
+  removeOnDisconnect(path, on) {
+    const ref = this.db.ref(path);
+    if (on) {
+      ref.onDisconnect().remove().catch(() => {});
+      return;
+    }
+    // cancel() снимает и вложенные отложенные записи, поэтому отметку «в сети» ставим заново.
+    ref.onDisconnect().cancel();
+    if (this.presencePath?.startsWith(`${path}/`)) this.db.ref(this.presencePath).onDisconnect().remove();
   },
 };
 
@@ -182,6 +196,7 @@ const localBackend = {
       drop();
     };
   },
+  removeOnDisconnect() {},
 };
 
 async function netBackend() {
@@ -241,6 +256,7 @@ function enterRoom(code, role) {
   net.code = code;
   net.role = role;
   net.game = 0;
+  net.cleanupArmed = null;
   history.replaceState(null, '', `${location.pathname}?${new URLSearchParams({
     ...Object.fromEntries(new URLSearchParams(location.search)), room: code,
   })}`);
@@ -258,6 +274,11 @@ function enterRoom(code, role) {
     const was = net.peerOnline;
     net.peerOnline = Boolean(net.peerUid && presence?.[net.peerUid]);
     if (was !== net.peerOnline && net.active) log(net.peerOnline ? 'Соперник в сети.' : 'Соперник отключился.', 'info');
+    // Комнату каждый раз создают заново: кто отключится последним, тот её и удалит.
+    if (net.cleanupArmed !== !net.peerOnline) {
+      net.cleanupArmed = !net.peerOnline;
+      db.removeOnDisconnect(roomPath(), net.cleanupArmed);
+    }
     updatePanel();
     renderOnline();
   }));
@@ -318,8 +339,15 @@ async function onGame(g) {
 }
 
 function leaveRoom() {
+  const room = net.code && roomPath();
+  const last = !net.peerOnline;
   for (const off of net.unsubs) off();
   net.unsubs = [];
+  if (room) {
+    net.backend.removeOnDisconnect(room, false);
+    if (last) Promise.resolve(net.backend.set(room, null)).catch(() => {});
+  }
+  net.cleanupArmed = null;
   Object.assign(net, {
     active: false, code: null, role: null, peerUid: null, peerName: '', peerOnline: false,
     peerAiming: false, game: 0, seq: 0, myShotSeq: 0, replaySeq: 0, pendingState: null, rules: null,

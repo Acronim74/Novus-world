@@ -3,6 +3,7 @@
     "rooms": {
       "$code": {
         ".read": "auth != null",
+        ".write": "auth != null && !newData.exists() && (data.child('players/host').val() === auth.uid || data.child('players/guest').val() === auth.uid)",
         "created": {
           ".write": "auth != null && !data.exists()"
         },
