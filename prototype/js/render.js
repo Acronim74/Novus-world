@@ -93,9 +93,16 @@ const ctx = canvas.getContext('2d');
 const view = { s: 1, ox: 0, oy: 0, dpr: 1, gauge: null };
 const coarsePointer = window.matchMedia('(pointer: coarse)');
 
+const phonePortrait = window.matchMedia('(orientation: portrait) and (max-width: 820px)');
+
 // На сенсорном экране шкала силы — широкая полоса за бортом, её тянут пальцем.
 function wideGauge() {
   return coarsePointer.matches && cfg.powerSide !== 'off';
+}
+
+// На телефоне в портрете шкала лежит под столом, чтобы стол занял всю ширину экрана.
+function bottomGauge() {
+  return wideGauge() && phonePortrait.matches;
 }
 
 function resize() {
@@ -108,6 +115,22 @@ function resize() {
   canvas.style.width = `${w}px`;
   canvas.style.height = `${h}px`;
   view.dpr = dpr;
+
+  if (bottomGauge()) {
+    const margin = 12;
+    const total = FIELD + 2 * RAIL_W + 2 * margin;
+    const gh = 36 * dpr;
+    const gap = 8 * dpr;
+    view.s = Math.min(canvas.width / total, (canvas.height - gh - gap) / total);
+    const size = FIELD * view.s;
+    const toField = (margin + RAIL_W) * view.s;
+    const top = (canvas.height - total * view.s - gap - gh) / 2;
+    view.ox = (canvas.width - size) / 2;
+    view.oy = top + toField;
+    const rail = RAIL_W * view.s;
+    view.gauge = { x: view.ox - rail, y: top + total * view.s + gap, w: size + 2 * rail, h: gh, horiz: true };
+    return;
+  }
 
   const margin = 30;
   const total = FIELD + 2 * RAIL_W + 2 * margin;
@@ -319,6 +342,10 @@ function drawCue() {
 
 // Шкала силы на боковом борту, в координатах экрана: при повороте стола остаётся на своей стороне.
 function drawPowerGauge() {
+  if (view.gauge.horiz) {
+    drawBottomGauge();
+    return;
+  }
   const d = view.dpr;
   const { x, y: top, w, h } = view.gauge;
   const fill = h * aim.power;
@@ -374,6 +401,61 @@ function drawPowerGauge() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (let k = 0; k < 3; k++) ctx.fillText('▼', x + w / 2, top + (14 + k * 16) * d);
+  }
+  ctx.restore();
+}
+
+// Шкала под столом на телефоне: палец ведут слева направо.
+function drawBottomGauge() {
+  const d = view.dpr;
+  const { x, y, w, h } = view.gauge;
+  const fill = w * aim.power;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#15191c';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, h / 2);
+  ctx.fill();
+
+  if (fill > 0) {
+    const g = ctx.createLinearGradient(x, 0, x + w, 0);
+    g.addColorStop(0, '#4caf50');
+    g.addColorStop(0.6, '#ffc107');
+    g.addColorStop(1, '#f44336');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.roundRect(x, y, Math.max(fill, h), h, h / 2);
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.lineWidth = Math.max(1, d);
+  for (const k of [0.25, 0.5, 0.75]) {
+    ctx.beginPath();
+    ctx.moveTo(x + w * k, y);
+    ctx.lineTo(x + w * k, y + h);
+    ctx.stroke();
+  }
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  if (aim.power > 0) {
+    const text = `${Math.round(aim.power * 100)}%`;
+    ctx.font = `700 ${13 * d}px "Segoe UI", sans-serif`;
+    const tw = ctx.measureText(text).width + 12 * d;
+    const th = h - 8 * d;
+    const tx = Math.min(x + w - tw / 2 - 4 * d, Math.max(x + tw / 2 + 4 * d, x + fill));
+    ctx.fillStyle = 'rgba(20, 24, 27, 0.9)';
+    ctx.beginPath();
+    ctx.roundRect(tx - tw / 2, y + 4 * d, tw, th, 6 * d);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(text, tx, y + h / 2 + d);
+  } else if (phase === 'place') {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.font = `${13 * d}px "Segoe UI", sans-serif`;
+    ctx.fillText('Сила удара: ведите пальцем вправо ▶▶', x + w / 2, y + h / 2 + d);
   }
   ctx.restore();
 }

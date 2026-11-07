@@ -65,7 +65,7 @@ canvas.addEventListener('pointerdown', e => {
   const w = toWorld(e);
   canvas.setPointerCapture(e.pointerId);
   if (touch && inGauge(e)) {
-    drag = { type: 'gauge', id: e.pointerId, startY: e.clientY };
+    drag = { type: 'gauge', id: e.pointerId, startX: e.clientX, startY: e.clientY };
     aim.charging = true;
     aim.power = 0;
     updatePower();
@@ -92,8 +92,9 @@ canvas.addEventListener('pointermove', e => {
   } else if (drag?.type === 'point') {
     pointAimAt(w);
   } else if (drag?.type === 'gauge') {
-    const pull = (wideGauge() ? e.clientY - drag.startY : drag.startY - e.clientY) * view.dpr;
-    aim.power = Math.min(1, Math.max(0, pull / (view.gauge.h * 0.85)));
+    const g = view.gauge;
+    const pull = (g.horiz ? e.clientX - drag.startX : wideGauge() ? e.clientY - drag.startY : drag.startY - e.clientY) * view.dpr;
+    aim.power = Math.min(1, Math.max(0, pull / (g.horiz ? g.w * 0.6 : g.h * 0.85)));
     updatePower();
   } else if (drag?.type === 'aim') {
     const sx = flipped() ? -aim.dirX : aim.dirX;

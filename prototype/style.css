@@ -928,7 +928,7 @@ button.primary:hover { background: #357a43; }
 
   #stage {
     flex: 0 0 auto;
-    height: min(calc(100vw - 24px), 62dvh);
+    height: min(calc(100vw + 44px), 66dvh);
   }
 
   #right {
