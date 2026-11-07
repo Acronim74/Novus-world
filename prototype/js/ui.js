@@ -58,9 +58,35 @@ function updatePanel() {
       `</div>`;
   }).join('');
 
+  renderMini(peer);
   for (const b of document.querySelectorAll('.undo')) b.disabled = !snapshot || phase === 'moving' || net.active;
   updatePower();
   renderSidePanels();
+}
+
+// Табло телефона в одну строку: счёт сторон, а между ними — время на удар или что сейчас происходит.
+function renderMini(peer) {
+  const status = phase === 'ai' ? 'Компьютер…'
+    : phase === 'remote' ? (net.peerOnline ? `${peer}…` : 'Ждём…')
+    : phase === 'over' ? 'Сет окончен'
+    : phase === 'place' ? (cfg.mode === 'hotseat' && !net.active ? 'Удар' : 'Ваш удар') : '';
+  const side = i => {
+    const inPocket = bodies.filter(b => b.kind === 'pawn' && b.owner === i && b.state === 'pocketed').length;
+    const who = net.active ? (i === net.seat ? 'вы' : escapeHtml(peer))
+      : cfg.mode === 'ai' ? (isAI(i) ? 'ИИ' : 'вы') : `игрок ${i + 1}`;
+    const active = i === current && phase !== 'over';
+    const chip = `<span class="chip" style="background:${PLAYERS[i].color}"></span>`;
+    const score = `<b>${inPocket}</b><small>/8</small>`;
+    const name = `<span class="who">${who}</span>`;
+    const owed = debt[i] ? `<span class="debt">долг ${debt[i]}</span>` : '';
+    return `<div class="side-score${active ? ' active' : ''}${i === 1 ? ' right' : ''}">` +
+      (i === 0 ? chip + score + name + owed : owed + name + score + chip) + '</div>';
+  };
+  const dot = net.code ? `<span class="dot ${net.peerOnline ? 'on' : net.peerUid ? 'off' : 'wait'}"></span>` : '';
+  document.getElementById('mini').innerHTML =
+    side(0) +
+    `<div class="mid${net.code ? ' netline' : ''}">${dot}<span id="shotTimerMini" class="timer"></span><span class="status">${status}</span></div>` +
+    side(1);
 }
 
 let timerShown = null;
@@ -70,10 +96,13 @@ function updateTimer(now) {
   const secs = active ? Math.max(0, Math.ceil((turnDeadline - now - 50) / 1000)) : -1;
   if (secs === timerShown) return;
   timerShown = secs;
-  const el = document.getElementById('shotTimer');
-  if (!el) return;
-  el.textContent = secs >= 0 ? `⏱ ${secs}` : '';
-  el.classList.toggle('low', secs >= 0 && secs <= 5);
+  for (const id of ['shotTimer', 'shotTimerMini']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.textContent = secs >= 0 ? `⏱ ${secs}` : '';
+    el.classList.toggle('low', secs >= 0 && secs <= 5);
+  }
+  document.getElementById('mini').classList.toggle('timed', secs >= 0);
 }
 
 function escapeHtml(s) {

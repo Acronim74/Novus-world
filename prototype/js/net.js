@@ -569,9 +569,11 @@ for (const id of ['btnOnline', 'tabOnline']) {
   });
 }
 document.getElementById('btnOnlineClose').addEventListener('click', closeOnline);
-document.getElementById('turn').addEventListener('click', e => {
-  if (e.target.closest('.netline')) openOnline();
-});
+for (const id of ['turn', 'mini']) {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target.closest('.netline')) openOnline();
+  });
+}
 onlineDialog.addEventListener('click', e => {
   if (e.target === onlineDialog) closeOnline();
 });

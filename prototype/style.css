@@ -712,6 +712,7 @@ button.primary:hover { background: #357a43; }
 .short { display: none; }
 #touchBar { display: none; }
 #tabbar { display: none; }
+#mini { display: none; }
 #touchBar .undo { display: none; }
 
 @media (pointer: coarse) {
@@ -810,6 +811,64 @@ button.primary:hover { background: #357a43; }
   }
 
   #left .buttons { display: none; }
+
+  /* Табло в одну строку. */
+  #left #turn, #left #scoreboard { display: none; }
+
+  #mini {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+  }
+
+  #mini .side-score {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+    border-radius: 8px;
+    background: #262d32;
+    border: 2px solid transparent;
+    white-space: nowrap;
+  }
+
+  #mini .side-score.right { justify-content: flex-end; }
+  #mini .side-score.active { border-color: #ffc107; }
+  #mini .chip { margin: 0; width: 12px; height: 12px; }
+  #mini b { font-size: 18px; line-height: 1; }
+  #mini small { color: #8fa0aa; }
+
+  #mini .who {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: #8fa0aa;
+  }
+
+  #mini .side-score:not(.right) .who { margin-left: 2px; }
+  #mini .right .who { margin-right: 2px; }
+  #mini .debt { font-size: 11px; color: #ff8a80; }
+
+  #mini .mid {
+    flex: 0 0 auto;
+    max-width: 30%;
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: #cfd8dc;
+    white-space: nowrap;
+  }
+
+  #mini .mid .status { overflow: hidden; text-overflow: ellipsis; }
+  #mini .timer { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  #mini .timer.low { color: #ff5252; }
+  #mini.timed .status { display: none; }
 
   #touchBar {
     display: flex;
