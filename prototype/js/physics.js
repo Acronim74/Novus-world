@@ -141,7 +141,7 @@ function collideRails(b) {
     const vn = -(b.vx * rail.nx + b.vy * rail.ny);
     if (vn > 0) {
       const excess = vn - cfg.climbThr[b.kind];
-      if (excess > 0 && physRandom() < Math.min(0.85, excess / cfg.climbRange)) {
+      if (excess > 0 && physRandom() < Math.min(cfg.climbMax[b.kind], excess / cfg.climbRange[b.kind])) {
         b.climb = rail.side;
         b.vz = Math.max(b.vz, 700 + physRandom() * 300);
         b.vx *= 0.6;
