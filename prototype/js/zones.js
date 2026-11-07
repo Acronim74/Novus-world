@@ -46,19 +46,24 @@ function placementProblem(p, x, y) {
   return null;
 }
 
+// Шайба встаёт на пересечение средней линии с линией бортовой зоны — так, чтобы линия не была видна
+// в отверстии (п. 12.9). Если место занято, берётся ближайшая свободная точка зоны.
 function findStrikerSpot(p) {
   const a = placementArea(p);
-  for (let off = 0; off <= FIELD / 2; off += 5) {
-    for (const sx of off === 0 ? [1] : [1, -1]) {
-      const x = FIELD / 2 + sx * off;
-      if (x < a.x0 || x > a.x1) continue;
-      for (let d = a.d0; d <= a.d1; d += 1) {
-        const y = yAtDepth(p, d);
-        if (!placementProblem(p, x, y)) return { x, y };
-      }
+  const tx = FIELD / 2;
+  const td = Math.min(a.d1, ZONE - STRIKER_SPEC.hole - LINE_W / 2);
+  if (!placementProblem(p, tx, yAtDepth(p, td))) return { x: tx, y: yAtDepth(p, td) };
+  let best = null;
+  let bestDist = Infinity;
+  for (let x = a.x0; x <= a.x1; x += 2) {
+    for (let d = a.d0; d <= a.d1; d += 2) {
+      const dist = Math.hypot(x - tx, d - td);
+      if (dist >= bestDist || placementProblem(p, x, yAtDepth(p, d))) continue;
+      best = { x, y: yAtDepth(p, d) };
+      bestDist = dist;
     }
   }
-  return { x: FIELD / 2, y: yAtDepth(p, a.d0) };
+  return best || { x: tx, y: yAtDepth(p, a.d0) };
 }
 
 function moveStriker(x, y) {
