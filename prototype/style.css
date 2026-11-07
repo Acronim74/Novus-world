@@ -647,6 +647,20 @@ button.primary:hover { background: #357a43; }
 }
 
 .group.dim { opacity: 0.4; }
+.group.locked { opacity: 0.55; pointer-events: none; }
+
+#onlineBody .rules {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #1f2529;
+  border: 1px solid #333c42;
+  font-size: 13px;
+}
+
+#onlineBody .rules ul { margin: 6px 0 0; padding-left: 18px; color: #cfd8dc; }
+#onlineBody .rules .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; }
+#onlineBody .rules .head button { padding: 4px 10px; font-weight: normal; }
+#roomRules label.check { margin-top: 4px; }
 
 .group-title {
   margin-bottom: 6px;

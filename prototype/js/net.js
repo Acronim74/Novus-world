@@ -4,7 +4,8 @@
 // Комната в базе: rooms/{код}
 //   players {host, guest}  — uid игроков
 //   names/{uid}, presence/{uid}
-//   game  {n, red}         — номер партии в комнате и uid того, кто играет красными
+//   rules                  — условия игры, их выбирает создатель комнаты
+//   game  {n, red, rules}  — номер партии в комнате, uid того, кто играет красными, и условия этой партии
 //   shot  {n, seq, by, d}  — последний удар: где стояла шайба, направление, сила, зерно физики
 //   state {n, seq, d}      — позиция после удара, её считает и присылает тот, кто бил
 //   aim                    — прицел того, кто сейчас бьёт, чтобы соперник видел кий
@@ -31,6 +32,8 @@ const net = {
   backend: null,
   unsubs: [],
   lastAim: '',
+  rules: null,
+  savedRules: null,
 };
 
 // ----- Хранилище: Firebase или, для проверки, общая память вкладок одного браузера -----
@@ -204,12 +207,14 @@ function myName() {
 }
 
 // ----- Комната -----
-async function createRoom() {
+async function createRoom(rules) {
   const db = await netBackend();
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomCode();
     if (await db.get(`rooms/${code}/players`)) continue;
     await db.update(`rooms/${code}`, { 'players/host': net.uid, created: Date.now() });
+    // Отдельной записью: правила базы пускают в комнату только после того, как хозяин записан.
+    await db.set(`rooms/${code}/rules`, rules);
     return enterRoom(code, 'host');
   }
   throw new Error('Не удалось создать комнату, попробуйте ещё раз.');
@@ -237,6 +242,7 @@ function enterRoom(code, role) {
     ...Object.fromEntries(new URLSearchParams(location.search)), room: code,
   })}`);
   if (myName()) db.set(roomPath(`names/${net.uid}`), myName());
+  net.savedRules ??= currentRules();
 
   net.unsubs.push(db.presence(roomPath(`presence/${net.uid}`)));
   net.unsubs.push(db.on(roomPath('players'), onPlayers));
@@ -250,6 +256,10 @@ function enterRoom(code, role) {
     net.peerOnline = Boolean(net.peerUid && presence?.[net.peerUid]);
     if (was !== net.peerOnline && net.active) log(net.peerOnline ? 'Соперник в сети.' : 'Соперник отключился.', 'info');
     updatePanel();
+    renderOnline();
+  }));
+  net.unsubs.push(db.on(roomPath('rules'), rules => {
+    net.rules = rules;
     renderOnline();
   }));
   net.unsubs.push(db.on(roomPath('game'), onGame));
@@ -271,19 +281,18 @@ function onPlayers(players) {
   renderOnline();
 }
 
-// Время на удар задаёт тот, кто начинает партию, — оно одинаково у обоих игроков.
+// Условия комнаты едут вместе с партией, чтобы оба начали её по одним правилам.
 function startRoomGame(n, red) {
-  return net.backend.set(roomPath('game'), { n, red, t: cfg.shotTime });
+  return net.backend.set(roomPath('game'), { n, red, rules: net.rules || currentRules() });
 }
 
 async function onGame(g) {
   if (!g || g.n === net.game) return;
   net.game = g.n;
   net.red = g.red;
-  cfg.shotTime = g.t || 0;
-  refreshControls();
   net.seat = g.red === net.uid ? 0 : 1;
   net.active = true;
+  if (g.rules) applyRules(g.rules);
   net.seq = 0;
   net.myShotSeq = 0;
   net.replaySeq = 0;
@@ -308,8 +317,10 @@ function leaveRoom() {
   net.unsubs = [];
   Object.assign(net, {
     active: false, code: null, role: null, peerUid: null, peerName: '', peerOnline: false,
-    peerAiming: false, game: 0, seq: 0, myShotSeq: 0, replaySeq: 0, pendingState: null,
+    peerAiming: false, game: 0, seq: 0, myShotSeq: 0, replaySeq: 0, pendingState: null, rules: null,
   });
+  if (net.savedRules) applyRules(net.savedRules);
+  net.savedRules = null;
   const params = new URLSearchParams(location.search);
   params.delete('room');
   history.replaceState(null, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
@@ -499,7 +510,7 @@ function renderOnline() {
         localStorage.setItem(NAME_KEY, name.value.trim());
       });
     }
-    document.getElementById('netCreate').addEventListener('click', () => runOnline(createRoom));
+    document.getElementById('netCreate').addEventListener('click', () => openRulesDialog('create'));
     const code = document.getElementById('netCode');
     const join = () => runOnline(() => joinRoom(code.value));
     document.getElementById('netJoin').addEventListener('click', join);
@@ -517,8 +528,14 @@ function renderOnline() {
     (navigator.share ? '<button id="netShare" class="primary">Отправить ссылку…</button>' : '') +
     `<div class="peer">${peer}</div>` +
     (net.active ? `<div class="note">Вы играете ${net.seat === 0 ? 'красными' : 'чёрными'}. Партия №${net.game}.</div>` : '') +
+    (net.rules
+      ? '<div class="rules"><div class="head">Условия игры' +
+        (net.role === 'host' ? '<button id="netRules">Изменить</button>' : '') +
+        `</div><ul>${rulesLines(net.rules).map(l => `<li>${l}</li>`).join('')}</ul></div>`
+      : '') +
     err +
     '<button id="netLeave">Выйти из комнаты</button>';
+  document.getElementById('netRules')?.addEventListener('click', () => openRulesDialog('edit'));
   document.getElementById('netCopy').addEventListener('click', async e => {
     const input = document.getElementById('netLink');
     try {
@@ -537,6 +554,63 @@ function renderOnline() {
     leaveRoom();
   });
 }
+
+// ----- Окно «Условия игры»: создатель комнаты выбирает их перед созданием и может поменять потом -----
+const RULE_NAMES = {
+  table: { fresh: 'свежая', normal: 'обычная', worn: 'стёрлась', bare: 'без порошка' },
+  hintLen: { off: 'нет', short: 'короткая', mid: 'до касания', full: 'с отскоками' },
+};
+const rulesDialog = document.getElementById('roomRules');
+let rulesDraft = null;
+let rulesMode = 'create';
+
+function rulesLines(r) {
+  return [
+    `Время на удар: ${Number(r.shotTime) ? `${r.shotTime} с` : 'без лимита'}`,
+    `Натирка стола: ${RULE_NAMES.table[r.table] || r.table}`,
+    `Помощь при прицеливании: ${RULE_NAMES.hintLen[r.hintLen] || r.hintLen}`,
+    `Центральный круг — ${r.circleDark !== false ? 'тёмное поле' : 'светлое поле'}`,
+    r.freePlace ? 'Шайбу можно ставить на всей своей половине' : 'Шайба ставится в бортовой зоне',
+  ];
+}
+
+function renderRulesDraft() {
+  for (const seg of rulesDialog.querySelectorAll('.seg[data-key]')) {
+    for (const b of seg.querySelectorAll('button')) b.classList.toggle('on', b.dataset.v === String(rulesDraft[seg.dataset.key]));
+  }
+  for (const box of rulesDialog.querySelectorAll('input[data-key]')) box.checked = Boolean(rulesDraft[box.dataset.key]);
+}
+
+function openRulesDialog(mode) {
+  rulesMode = mode;
+  rulesDraft = { ...(mode === 'edit' && net.rules ? net.rules : currentRules()) };
+  document.getElementById('btnRulesOk').textContent = mode === 'edit' ? 'Сохранить' : 'Создать комнату';
+  document.getElementById('rulesNote').textContent = mode === 'edit' && net.active
+    ? 'Новые условия начнут действовать со следующей партии.'
+    : '';
+  renderRulesDraft();
+  rulesDialog.classList.remove('closed');
+}
+
+for (const seg of rulesDialog.querySelectorAll('.seg[data-key]')) {
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('button[data-v]');
+    if (!b) return;
+    rulesDraft[seg.dataset.key] = seg.dataset.key === 'shotTime' ? Number(b.dataset.v) : b.dataset.v;
+    renderRulesDraft();
+  });
+}
+for (const box of rulesDialog.querySelectorAll('input[data-key]')) {
+  box.addEventListener('change', () => {
+    rulesDraft[box.dataset.key] = box.checked;
+  });
+}
+document.getElementById('btnRulesOk').addEventListener('click', () => {
+  rulesDialog.classList.add('closed');
+  const rules = { ...rulesDraft };
+  if (rulesMode === 'edit') net.backend.set(roomPath('rules'), rules);
+  else runOnline(() => createRoom(rules));
+});
 
 async function runOnline(action) {
   onlineBusy = true;

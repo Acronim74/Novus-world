@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#1d2327">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
   <div id="app">
@@ -106,7 +106,7 @@
         </div>
       </div>
 
-      <div class="group">
+      <div class="group" id="groupTable">
         <div class="group-title">Натирка стола</div>
         <div class="seg" id="optTable">
           <button data-v="fresh">Свежая</button>
@@ -117,7 +117,7 @@
         <div class="tip" id="tableNote"></div>
       </div>
 
-      <div class="group">
+      <div class="group" id="groupHint">
         <div class="group-title">Помощь при прицеливании</div>
         <div class="seg" id="optHintLen">
           <button data-v="off">Нет</button>
@@ -128,7 +128,7 @@
         <div class="tip" id="hintNote"></div>
       </div>
 
-      <div class="group">
+      <div class="group" id="groupTime">
         <div class="group-title">Время на удар</div>
         <div class="seg" id="optShotTime">
           <button data-v="0">Без лимита</button>
@@ -152,6 +152,58 @@
         <button id="btnOnlineClose" title="Закрыть">✕</button>
       </div>
       <div id="onlineBody"></div>
+    </div>
+  </div>
+
+  <div id="roomRules" class="modal closed">
+    <div class="sheet" role="dialog" aria-label="Условия игры">
+      <div class="drawer-head">
+        <span>Условия игры</span>
+        <button class="close" title="Закрыть">✕</button>
+      </div>
+      <div class="tip">Соперник будет играть по этим же условиям.</div>
+
+      <div class="group">
+        <div class="group-title">Время на удар</div>
+        <div class="seg" data-key="shotTime">
+          <button data-v="0">Без лимита</button>
+          <button data-v="30">30 с</button>
+          <button data-v="20">20 с</button>
+          <button data-v="10">10 с</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Натирка стола</div>
+        <div class="seg" data-key="table">
+          <button data-v="fresh">Свежая</button>
+          <button data-v="normal">Обычная</button>
+          <button data-v="worn">Стёрлась</button>
+          <button data-v="bare">Без порошка</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Помощь при прицеливании</div>
+        <div class="seg" data-key="hintLen">
+          <button data-v="off">Нет</button>
+          <button data-v="short">Короткая</button>
+          <button data-v="mid">До касания</button>
+          <button data-v="full">С отскоками</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Правила</div>
+        <label class="check"><input type="checkbox" data-key="circleDark"> Центральный круг — тёмное поле (п. 11.2)</label>
+        <label class="check"><input type="checkbox" data-key="freePlace"> Шайбу можно ставить на всей своей половине</label>
+      </div>
+
+      <div id="rulesNote" class="tip"></div>
+      <div class="sheet-actions">
+        <button class="close">Отмена</button>
+        <button id="btnRulesOk" class="primary">Создать комнату</button>
+      </div>
     </div>
   </div>
 
@@ -226,19 +278,19 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=10"></script>
-  <script src="js/state.js?v=10"></script>
-  <script src="js/zones.js?v=10"></script>
-  <script src="js/shot.js?v=10"></script>
-  <script src="js/physics.js?v=10"></script>
-  <script src="js/referee.js?v=10"></script>
-  <script src="js/ai.js?v=10"></script>
-  <script src="js/records.js?v=10"></script>
-  <script src="js/render.js?v=10"></script>
-  <script src="js/input.js?v=10"></script>
-  <script src="js/ui.js?v=10"></script>
-  <script src="js/net-config.js?v=10"></script>
-  <script src="js/net.js?v=10"></script>
-  <script src="js/main.js?v=10"></script>
+  <script src="js/config.js?v=11"></script>
+  <script src="js/state.js?v=11"></script>
+  <script src="js/zones.js?v=11"></script>
+  <script src="js/shot.js?v=11"></script>
+  <script src="js/physics.js?v=11"></script>
+  <script src="js/referee.js?v=11"></script>
+  <script src="js/ai.js?v=11"></script>
+  <script src="js/records.js?v=11"></script>
+  <script src="js/render.js?v=11"></script>
+  <script src="js/input.js?v=11"></script>
+  <script src="js/ui.js?v=11"></script>
+  <script src="js/net-config.js?v=11"></script>
+  <script src="js/net.js?v=11"></script>
+  <script src="js/main.js?v=11"></script>
 </body>
 </html>

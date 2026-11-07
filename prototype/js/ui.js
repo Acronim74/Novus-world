@@ -186,14 +186,43 @@ function bindSeg(id, get, set) {
 function refreshControls() {
   for (const refresh of segRefreshers) refresh();
   document.getElementById('groupLevel').classList.toggle('dim', cfg.mode !== 'ai' || net.active);
+  // В сетевой партии условия общие для обоих — их задал создатель комнаты.
+  for (const id of ['groupTable', 'groupHint', 'groupTime']) document.getElementById(id).classList.toggle('locked', net.active);
+  for (const id of ['optCircleDark', 'optFree']) document.getElementById(id).disabled = net.active;
   document.getElementById('tableNote').textContent = TABLE_STATES[cfg.table].note;
   document.getElementById('hintNote').textContent = HINT_MODES[cfg.hintLen].note;
   document.getElementById('timeNote').textContent = cfg.shotTime
     ? `Не успели ударить за ${cfg.shotTime} с — штрафная пешка и ход переходит (п. 17.1.15).`
     : 'Думайте над ударом сколько угодно.';
   document.getElementById('levelNetNote').textContent = net.active
-    ? 'Идёт игра по сети: компьютер не участвует, а время на удар задаёт тот, кто начинает партию.'
+    ? 'Идёт игра по сети: компьютер не участвует, а условия игры задал создатель комнаты.'
     : '';
+}
+
+// Условия, которые в сетевой игре одинаковы у обоих игроков.
+function currentRules() {
+  return { shotTime: cfg.shotTime, table: cfg.table, hintLen: cfg.hintLen, circleDark: cfg.circleDark, freePlace: cfg.freePlace };
+}
+
+function applyRules(r) {
+  cfg.shotTime = Number(r.shotTime) || 0;
+  if (TABLE_STATES[r.table]) setTable(r.table);
+  if (HINT_MODES[r.hintLen]) cfg.hintLen = r.hintLen;
+  cfg.circleDark = r.circleDark !== false;
+  cfg.freePlace = Boolean(r.freePlace);
+  document.getElementById('optCircleDark').checked = cfg.circleDark;
+  document.getElementById('optFree').checked = cfg.freePlace;
+  refreshControls();
+}
+
+function setTable(v) {
+  cfg.table = v;
+  cfg.muStriker = TABLE_STATES[v].muStriker;
+  cfg.muPawn = TABLE_STATES[v].muPawn;
+  for (const [el, val] of [[muStrikerInput, cfg.muStriker], [muPawnInput, cfg.muPawn]]) {
+    el.value = val;
+    el.parentElement.querySelector('span').textContent = el.value;
+  }
 }
 
 bindSeg('optMode', () => cfg.mode, v => {
@@ -234,15 +263,7 @@ const muPawnInput = document.getElementById('optMuPawn');
 bindRange('optMuStriker', () => cfg.muStriker, v => { cfg.muStriker = v; });
 bindRange('optMuPawn', () => cfg.muPawn, v => { cfg.muPawn = v; });
 bindRange('optPuckE', () => cfg.puckE, v => { cfg.puckE = v; });
-bindSeg('optTable', () => cfg.table, v => {
-  cfg.table = v;
-  cfg.muStriker = TABLE_STATES[v].muStriker;
-  cfg.muPawn = TABLE_STATES[v].muPawn;
-  for (const [el, val] of [[muStrikerInput, cfg.muStriker], [muPawnInput, cfg.muPawn]]) {
-    el.value = val;
-    el.parentElement.querySelector('span').textContent = el.value;
-  }
-});
+bindSeg('optTable', () => cfg.table, setTable);
 bindRange('optRailE', () => cfg.railE, v => { cfg.railE = v; });
 bindRange('optVMax', () => cfg.vMax, v => { cfg.vMax = v; });
 bindRange('optClimbPawn', () => cfg.climbThr.pawn, v => { cfg.climbThr.pawn = v; });
