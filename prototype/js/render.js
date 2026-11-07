@@ -322,6 +322,9 @@ function drawPowerGauge() {
   const d = view.dpr;
   const { x, y: top, w, h } = view.gauge;
   const fill = h * aim.power;
+  // Сенсорную шкалу тянут сверху вниз, узкая на борту заполняется снизу вверх.
+  const down = wideGauge();
+  const edge = down ? top + fill : top + h - fill;
 
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -331,20 +334,20 @@ function drawPowerGauge() {
   ctx.fill();
 
   if (fill > 0) {
-    const g = ctx.createLinearGradient(0, top + h, 0, top);
+    const g = down ? ctx.createLinearGradient(0, top, 0, top + h) : ctx.createLinearGradient(0, top + h, 0, top);
     g.addColorStop(0, '#4caf50');
     g.addColorStop(0.6, '#ffc107');
     g.addColorStop(1, '#f44336');
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.roundRect(x, top + h - fill, w, fill, w / 2);
+    ctx.roundRect(x, down ? top : top + h - fill, w, fill, w / 2);
     ctx.fill();
   }
 
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.lineWidth = Math.max(1, d);
   for (const k of [0.25, 0.5, 0.75]) {
-    const y = top + h * (1 - k);
+    const y = top + h * (down ? k : 1 - k);
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x + w, y);
@@ -356,7 +359,7 @@ function drawPowerGauge() {
     ctx.font = `700 ${12 * d}px "Segoe UI", sans-serif`;
     const tw = ctx.measureText(text).width + 10 * d;
     const th = 18 * d;
-    const ty = Math.min(top + h - th / 2, Math.max(top + th / 2, top + h - fill));
+    const ty = Math.min(top + h - th / 2, Math.max(top + th / 2, edge));
     ctx.fillStyle = 'rgba(20, 24, 27, 0.9)';
     ctx.beginPath();
     ctx.roundRect(x + w / 2 - tw / 2, ty - th / 2, tw, th, 5 * d);
@@ -370,7 +373,7 @@ function drawPowerGauge() {
     ctx.font = `${14 * d}px "Segoe UI", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    for (let k = 0; k < 3; k++) ctx.fillText('▲', x + w / 2, top + h - (14 + k * 16) * d);
+    for (let k = 0; k < 3; k++) ctx.fillText('▼', x + w / 2, top + (14 + k * 16) * d);
   }
   ctx.restore();
 }

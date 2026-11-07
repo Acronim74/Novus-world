@@ -2,7 +2,7 @@
 
 // ===== Управление =====
 // Мышь: наведение — прицел, нажать и тянуть назад — сила.
-// Палец: вести по полю — прицел, вверх по шкале силы — сила, отпустить — удар.
+// Палец: вести по полю — прицел, вниз по шкале силы — сила, отпустить — удар.
 const TOUCH_GRAB_PX = 26;
 const GAUGE_PAD_PX = 14;
 
@@ -92,7 +92,7 @@ canvas.addEventListener('pointermove', e => {
   } else if (drag?.type === 'point') {
     pointAimAt(w);
   } else if (drag?.type === 'gauge') {
-    const pull = (drag.startY - e.clientY) * view.dpr;
+    const pull = (wideGauge() ? e.clientY - drag.startY : drag.startY - e.clientY) * view.dpr;
     aim.power = Math.min(1, Math.max(0, pull / (view.gauge.h * 0.85)));
     updatePower();
   } else if (drag?.type === 'aim') {
