@@ -342,3 +342,34 @@ window.addEventListener('keydown', e => {
   closeDrawer();
   for (const modal of document.querySelectorAll('.modal')) modal.classList.add('closed');
 });
+
+// ----- Установка на телефон: игра открывается на весь экран, без строки браузера -----
+const btnInstall = document.getElementById('btnInstall');
+const installNote = document.getElementById('installNote');
+const installed = matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+let installPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  installPrompt = e;
+  btnInstall.hidden = false;
+});
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  btnInstall.hidden = true;
+  installNote.hidden = true;
+});
+// В Safari на iPhone и iPad своего окна установки нет — только через меню «Поделиться».
+if (!installed && /iPhone|iPad|iPod/.test(navigator.userAgent)) btnInstall.hidden = false;
+
+btnInstall.addEventListener('click', async () => {
+  if (!installPrompt) {
+    installNote.textContent = 'В Safari нажмите «Поделиться» (квадрат со стрелкой) → «На экран „Домой“». Игра появится значком и будет открываться на весь экран.';
+    installNote.hidden = false;
+    return;
+  }
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null;
+  btnInstall.hidden = true;
+});

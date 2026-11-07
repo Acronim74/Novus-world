@@ -9,6 +9,7 @@
 //   shot  {n, seq, by, d}  — последний удар: где стояла шайба, направление, сила, зерно физики
 //   state {n, seq, d}      — позиция после удара, её считает и присылает тот, кто бил
 //   aim                    — прицел того, кто сейчас бьёт, чтобы соперник видел кий
+//   react/{uid} {e, k}     — последняя реакция игрока (эмодзи) и её случайный ключ
 const ROOM_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const NAME_KEY = 'novus.name';
 
@@ -34,6 +35,8 @@ const net = {
   lastAim: '',
   rules: null,
   savedRules: null,
+  reactSeen: null,
+  reactAt: 0,
 };
 
 // ----- Хранилище: Firebase или, для проверки, общая память вкладок одного браузера -----
@@ -266,6 +269,8 @@ function enterRoom(code, role) {
   net.unsubs.push(db.on(roomPath('shot'), onShot));
   net.unsubs.push(db.on(roomPath('state'), onState));
   net.unsubs.push(db.on(roomPath('aim'), onAim));
+  net.reactSeen = null;
+  net.unsubs.push(db.on(roomPath('react'), onReact));
   renderOnline();
 }
 
@@ -470,6 +475,71 @@ function onAim(a) {
   updatePower();
 }
 
+// ----- Реакции -----
+const REACTIONS = ['👍', '👏', '🔥', '😮', '😅', '😂', '😬', '😡', '🤝', '🍀'];
+const reactBar = document.getElementById('reactBar');
+reactBar.innerHTML = REACTIONS.map(e => `<button data-e="${e}">${e}</button>`).join('');
+
+function onReact(all) {
+  // Старые реакции, лежащие в комнате при входе, не показываем.
+  if (!net.reactSeen) {
+    net.reactSeen = Object.fromEntries(Object.entries(all || {}).map(([uid, r]) => [uid, r?.k]));
+    return;
+  }
+  const r = net.peerUid && all?.[net.peerUid];
+  if (!r || r.k === net.reactSeen[net.peerUid]) return;
+  net.reactSeen[net.peerUid] = r.k;
+  if (REACTIONS.includes(r.e)) showReaction(r.e, false);
+}
+
+function sendReaction(e) {
+  const now = performance.now();
+  if (!net.code || !net.peerUid || now - net.reactAt < 1200) return;
+  net.reactAt = now;
+  net.backend.set(roomPath(`react/${net.uid}`), { e, k: Math.random().toString(36).slice(2, 10) });
+  showReaction(e, true);
+}
+
+// Свою сторону стола в сетевой партии каждый видит снизу: реакция соперника всплывает у верхнего борта.
+function showReaction(e, mine) {
+  const el = document.createElement('div');
+  el.className = `float-react ${mine ? 'mine' : 'peer'}`;
+  el.innerHTML = `<span class="e"></span><span class="who"></span>`;
+  el.querySelector('.e').textContent = e;
+  el.querySelector('.who').textContent = mine ? 'Вы' : net.peerName || 'Соперник';
+  document.getElementById('stage').appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+function toggleReactBar(btn) {
+  if (!reactBar.classList.contains('closed')) {
+    reactBar.classList.add('closed');
+    return;
+  }
+  reactBar.classList.remove('closed');
+  const r = btn.getBoundingClientRect();
+  const w = reactBar.offsetWidth;
+  reactBar.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))}px`;
+  reactBar.style.top = `${Math.max(8, r.top - reactBar.offsetHeight - 8)}px`;
+}
+
+for (const id of ['btnReact', 'btnReactTouch']) {
+  const btn = document.getElementById(id);
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    toggleReactBar(btn);
+  });
+}
+reactBar.addEventListener('click', e => {
+  const b = e.target.closest('button[data-e]');
+  if (!b) return;
+  reactBar.classList.add('closed');
+  sendReaction(b.dataset.e);
+});
+document.addEventListener('pointerdown', e => {
+  if (!reactBar.contains(e.target) && !e.target.closest('.react')) reactBar.classList.add('closed');
+});
+
 // ----- Окно «Игра по сети» -----
 const onlineDialog = document.getElementById('online');
 let onlineBusy = false;
@@ -487,6 +557,8 @@ function renderOnline() {
     : '🌐 <span class="full">Играть по сети с другом</span><span class="short">По сети</span>';
   document.getElementById('tabOnlineLabel').textContent = net.code || 'По сети';
   document.getElementById('tabOnline').classList.toggle('live', Boolean(net.code));
+  document.body.classList.toggle('net', Boolean(net.code && net.peerUid));
+  if (!net.peerUid) reactBar.classList.add('closed');
   const box = document.getElementById('onlineBody');
   if (!box) return;
   const err = onlineError ? `<div class="net-error">${escapeHtml(onlineError)}</div>` : '';

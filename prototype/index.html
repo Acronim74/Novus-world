@@ -7,7 +7,12 @@
   <meta name="theme-color" content="#1d2327">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="style.css?v=12">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Новус">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
   <div id="app">
@@ -25,6 +30,7 @@
       <div class="buttons">
         <button id="btnOnline" class="primary">🌐 <span class="full">Играть по сети с другом</span><span class="short">По сети</span></button>
         <button id="btnUndo" class="undo"><span class="full">Вернуть позицию до удара</span><span class="short">↶ Отмена</span></button>
+        <button id="btnReact" class="react">😊<span class="full"> Реакция сопернику</span></button>
         <button id="btnNew"><span class="full">Новая партия</span><span class="short">Новая</span></button>
         <button id="btnLevel">🎯<span class="full"> Сложность и время</span></button>
         <button id="btnRecords">📊<span class="full"> Статистика</span></button>
@@ -39,6 +45,7 @@
         <button id="btnRotL" aria-label="Повернуть прицел против часовой стрелки">⟲</button>
         <span>Точный прицел</span>
         <button id="btnUndoTouch" class="undo">↶ Отменить удар</button>
+        <button id="btnReactTouch" class="react">😊 Реакция</button>
         <button id="btnRotR" aria-label="Повернуть прицел по часовой стрелке">⟳</button>
       </div>
       <h2>Последний удар</h2>
@@ -66,6 +73,8 @@
       <span>Сложность</span>
     </button>
   </nav>
+
+  <div id="reactBar" class="closed" role="menu" aria-label="Реакция сопернику"></div>
 
   <div id="confirmNew" class="modal closed">
     <div class="sheet small" role="dialog" aria-label="Новая партия">
@@ -228,6 +237,8 @@
     </div>
 
     <button id="btnRecordsDrawer">📊 Статистика партий</button>
+    <button id="btnInstall" hidden>📲 Установить как приложение</button>
+    <div id="installNote" class="note" hidden></div>
     <details class="block">
       <summary>Управление</summary>
       <ul class="help">
@@ -278,19 +289,19 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=12"></script>
-  <script src="js/state.js?v=12"></script>
-  <script src="js/zones.js?v=12"></script>
-  <script src="js/shot.js?v=12"></script>
-  <script src="js/physics.js?v=12"></script>
-  <script src="js/referee.js?v=12"></script>
-  <script src="js/ai.js?v=12"></script>
-  <script src="js/records.js?v=12"></script>
-  <script src="js/render.js?v=12"></script>
-  <script src="js/input.js?v=12"></script>
-  <script src="js/ui.js?v=12"></script>
-  <script src="js/net-config.js?v=12"></script>
-  <script src="js/net.js?v=12"></script>
-  <script src="js/main.js?v=12"></script>
+  <script src="js/config.js?v=13"></script>
+  <script src="js/state.js?v=13"></script>
+  <script src="js/zones.js?v=13"></script>
+  <script src="js/shot.js?v=13"></script>
+  <script src="js/physics.js?v=13"></script>
+  <script src="js/referee.js?v=13"></script>
+  <script src="js/ai.js?v=13"></script>
+  <script src="js/records.js?v=13"></script>
+  <script src="js/render.js?v=13"></script>
+  <script src="js/input.js?v=13"></script>
+  <script src="js/ui.js?v=13"></script>
+  <script src="js/net-config.js?v=13"></script>
+  <script src="js/net.js?v=13"></script>
+  <script src="js/main.js?v=13"></script>
 </body>
 </html>
