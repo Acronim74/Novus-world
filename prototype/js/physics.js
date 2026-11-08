@@ -115,7 +115,7 @@ function freedom(b, dx, dy) {
       if (into > 0) blocked += into * into;
     }
   }
-  return Math.max(0.18, 1 - blocked * 0.75);
+  return Math.max(0, 1 - blocked);
 }
 
 // Прижатая к борту фишка после удара пружинит от него и выходит следом за ударившей,
@@ -135,7 +135,7 @@ function buckleOffRail(a, b, nx, ny, vrel) {
   for (const rail of RAILS) {
     const along = Math.abs(nx * -rail.ny + ny * rail.nx);
     if (along < 0.15) continue;
-    const kick = vrel * along * 0.15;
+    const kick = vrel * along * cfg.railBuckle;
     if (rail.gap(a) <= a.r + 1) {
       a.vx += rail.nx * kick;
       a.vy += rail.ny * kick;
