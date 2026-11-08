@@ -301,6 +301,8 @@ function endShot() {
   if (winnerText) {
     phase = 'over';
     setWinner = winner;
+    if (net.active && current === net.seat) addMatchPoint(winner);
+    if (net.active && (winner === 0 || winner === 1)) winnerText += ` Счёт ${matchLabel()}`;
     recordGame(winner, left.map(n => 8 - n));
     log(winnerText, 'ok');
     setLastShot(p, items, { cls: loseSet ? 'foul' : 'win', text: winnerText });

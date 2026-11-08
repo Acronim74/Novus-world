@@ -599,6 +599,21 @@ button.primary:hover { background: #357a43; }
   cursor: pointer;
 }
 
+#turn .match, #mini .match, .match-bar b {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  color: #e6e6e6;
+}
+
+.match-bar {
+  text-align: center;
+  font-size: 13px;
+  color: #8fa0aa;
+}
+
+.match-bar b { font-size: 22px; }
+
 #btnOnline { width: 100%; }
 
 #onlineBody .halves {
@@ -944,6 +959,7 @@ body.net .buttons .react { display: block; }
   }
 
   #mini .mid .status { overflow: hidden; text-overflow: ellipsis; }
+  #mini .match { font-size: 16px; margin-right: 6px; }
   #mini .timer { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
   #mini .timer.low { color: #ff5252; }
   #mini.timed .status { display: none; }

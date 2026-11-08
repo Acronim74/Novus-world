@@ -10,6 +10,7 @@
 //   state {n, seq, d}      — позиция после удара, её считает и присылает тот, кто бил
 //   aim                    — прицел того, кто сейчас бьёт, чтобы соперник видел кий
 //   react/{uid} {e, k}     — последняя реакция игрока (эмодзи) и её случайный ключ
+//   match {n, scores}      — счёт сетов комнаты по uid; сбрасывается при выходе
 const ROOM_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const NAME_KEY = 'novus.name';
 
@@ -38,6 +39,8 @@ const net = {
   reactSeen: null,
   reactAt: 0,
   cleanupArmed: null,
+  match: {},
+  matchCounted: 0,
 };
 
 // ----- Хранилище: Firebase или, для проверки, общая память вкладок одного браузера -----
@@ -256,6 +259,8 @@ function enterRoom(code, role) {
   net.code = code;
   net.role = role;
   net.game = 0;
+  net.match = {};
+  net.matchCounted = 0;
   net.cleanupArmed = null;
   history.replaceState(null, '', `${location.pathname}?${new URLSearchParams({
     ...Object.fromEntries(new URLSearchParams(location.search)), room: code,
@@ -286,6 +291,7 @@ function enterRoom(code, role) {
     net.rules = rules;
     renderOnline();
   }));
+  net.unsubs.push(db.on(roomPath('match'), onMatch));
   net.unsubs.push(db.on(roomPath('game'), onGame));
   net.unsubs.push(db.on(roomPath('shot'), onShot));
   net.unsubs.push(db.on(roomPath('state'), onState));
@@ -310,6 +316,39 @@ function onPlayers(players) {
 // Условия комнаты едут вместе с партией, чтобы оба начали её по одним правилам.
 function startRoomGame(n, red) {
   return net.backend.set(roomPath('game'), { n, red, rules: net.rules || currentRules() });
+}
+
+function onMatch(m) {
+  net.match = m?.scores && typeof m.scores === 'object' ? m.scores : {};
+  net.matchCounted = m?.n || 0;
+  updatePanel();
+  renderOnline();
+}
+
+function matchPoints(uid) {
+  return (uid && net.match[uid]) || 0;
+}
+
+function matchPair() {
+  const red = matchPoints(net.red);
+  const blackUid = net.red && (net.red === net.uid ? net.peerUid : net.uid);
+  return [red, matchPoints(blackUid)];
+}
+
+function matchLabel() {
+  const [red, black] = matchPair();
+  return `${red}:${black}`;
+}
+
+function addMatchPoint(winnerSeat) {
+  if (!net.active || net.matchCounted === net.game) return;
+  if (winnerSeat !== 0 && winnerSeat !== 1) return;
+  const uid = winnerSeat === 0 ? net.red : (net.red === net.uid ? net.peerUid : net.uid);
+  if (!uid) return;
+  const scores = { ...net.match, [uid]: matchPoints(uid) + 1 };
+  net.match = scores;
+  net.matchCounted = net.game;
+  net.backend.set(roomPath('match'), { n: net.game, scores });
 }
 
 async function onGame(g) {
@@ -346,11 +385,13 @@ function leaveRoom() {
   if (room) {
     net.backend.removeOnDisconnect(room, false);
     if (last) Promise.resolve(net.backend.set(room, null)).catch(() => {});
+    else Promise.resolve(net.backend.set(`${room}/match`, null)).catch(() => {});
   }
   net.cleanupArmed = null;
   Object.assign(net, {
     active: false, code: null, role: null, peerUid: null, peerName: '', peerOnline: false,
     peerAiming: false, game: 0, seq: 0, myShotSeq: 0, replaySeq: 0, pendingState: null, rules: null,
+    match: {}, matchCounted: 0,
   });
   if (net.savedRules) applyRules(net.savedRules);
   net.savedRules = null;
@@ -398,6 +439,7 @@ function serializeState() {
   return {
     bodies: bodies.map(b => [b.x, b.y, b.state]),
     current, debt, stats, lastShot, winnerText, firstShooter, lostTurn, darkMisses, setWinner,
+    match: { n: net.matchCounted, scores: net.match },
     over: phase === 'over',
   };
 }
@@ -467,6 +509,10 @@ function applyState(st) {
   if (d.firstShooter != null) firstShooter = d.firstShooter;
   if (d.lostTurn) lostTurn = d.lostTurn;
   if (d.darkMisses) darkMisses = d.darkMisses;
+  if (d.match?.scores) {
+    net.match = d.match.scores;
+    net.matchCounted = d.match.n || net.matchCounted;
+  }
   shot = null;
   net.peerAiming = false;
   if (lastShot) {
@@ -633,6 +679,7 @@ function renderOnline() {
     `<div class="join"><input id="netLink" readonly value="${escapeHtml(roomLink())}"><button id="netCopy">Копировать</button></div>` +
     (navigator.share ? '<button id="netShare" class="primary">Отправить ссылку…</button>' : '') +
     `<div class="peer">${peer}</div>` +
+    `<div class="match-bar">Счёт комнаты <b>${matchLabel()}</b></div>` +
     (net.active ? `<div class="note">Вы играете ${net.seat === 0 ? 'красными' : 'чёрными'}. Партия №${net.game}.</div>` : '') +
     (net.rules
       ? '<div class="rules"><div class="head">Условия игры' +

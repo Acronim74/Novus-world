@@ -32,7 +32,8 @@ function updatePanel() {
     : 'Поставьте шайбу, прицельтесь и ударьте';
   const room = net.code
     ? `<span class="netline"><span class="dot ${net.peerOnline ? 'on' : net.peerUid ? 'off' : 'wait'}"></span>` +
-      `По сети · ${net.code}${net.peerUid ? ` · ${escapeHtml(peer)}` : ' · ждём соперника'}</span>`
+      `По сети · ${net.code} · <b class="match">${matchLabel()}</b>` +
+      `${net.peerUid ? ` · ${escapeHtml(peer)}` : ' · ждём соперника'}</span>`
     : '';
   document.getElementById('turn').innerHTML =
     `<span class="chip" style="background:${pl.color}"></span>Бьют <b>${pl.name}</b>` +
@@ -40,9 +41,11 @@ function updatePanel() {
     `<span class="hint">${hint}</span>${room}`;
   timerShown = null;
 
-  document.getElementById('scoreboard').innerHTML = PLAYERS.map((p, i) => {
+  const matchBar = net.code ? `<div class="match-bar">Счёт <b>${matchLabel()}</b></div>` : '';
+  document.getElementById('scoreboard').innerHTML = matchBar + PLAYERS.map((p, i) => {
     const onTable = pawnsOnTable(i);
     const inPocket = bodies.filter(b => b.kind === 'pawn' && b.owner === i && b.state === 'pocketed').length;
+    const sets = net.code ? matchPair()[i] : null;
     const role = net.active ? (i === net.seat ? 'вы' : escapeHtml(net.peerName || 'соперник'))
       : cfg.mode === 'ai' ? (isAI(i) ? `компьютер · ${AI_LEVELS[cfg.level].name.toLowerCase()}` : 'вы')
       : `игрок ${i + 1}`;
@@ -54,7 +57,7 @@ function updatePanel() {
       `${active ? '<span class="bat">бьёт</span>' : ''}</div>` +
       `<div class="big">${inPocket} <small>из 8 забито</small></div>` +
       `<div class="pips">${pips}</div>` +
-      `<div class="sub">на столе ${onTable}${debt[i] ? ` · <b>долг ${debt[i]}</b>` : ''}</div>` +
+      `<div class="sub">на столе ${onTable}${debt[i] ? ` · <b>долг ${debt[i]}</b>` : ''}${sets != null ? ` · сеты ${sets}` : ''}</div>` +
       `</div>`;
   }).join('');
 
@@ -83,9 +86,10 @@ function renderMini(peer) {
       (i === 0 ? chip + score + name + owed : owed + name + score + chip) + '</div>';
   };
   const dot = net.code ? `<span class="dot ${net.peerOnline ? 'on' : net.peerUid ? 'off' : 'wait'}"></span>` : '';
+  const match = net.code ? `<span class="match">${matchLabel()}</span>` : '';
   document.getElementById('mini').innerHTML =
     side(0) +
-    `<div class="mid${net.code ? ' netline' : ''}">${dot}<span id="shotTimerMini" class="timer"></span><span class="status">${status}</span></div>` +
+    `<div class="mid${net.code ? ' netline' : ''}">${dot}${match}<span id="shotTimerMini" class="timer"></span><span class="status">${status}</span></div>` +
     side(1);
 }
 
@@ -315,7 +319,7 @@ function toggleDrawer() {
 
 function askNewGame() {
   document.getElementById('confirmNewText').textContent = net.active
-    ? 'Начать новый сет? У соперника он тоже начнётся заново, а цвета поменяются: первым бьёт другой игрок.'
+    ? `Начать новый сет? У соперника он тоже начнётся заново, а цвета поменяются. Счёт комнаты ${matchLabel()} сохранится.`
     : phase === 'over' ? 'Начать новый сет?' : 'Начать новый сет? Текущая партия будет прервана и не попадёт в статистику.';
   openModal('confirmNew');
 }
