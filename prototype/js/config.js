@@ -83,6 +83,8 @@ const cfg = {
   powerSide: 'right',
   circleDark: true,
   freePlace: false,
+  // п. 18.1.5: шайба на обратном ходу не заезжает в свою зону, если нет тёмных пешек.
+  zoneReturn: false,
   flip: false,
   slow: false,
 };

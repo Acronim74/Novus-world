@@ -127,7 +127,7 @@ function judgeShot() {
   const pawnsOut = outs.filter(b => b !== striker);
   const loseSet = findLoseSet(p);
   const foul = loseSet ? null : findFoul(p, strikerIn, strikerOut);
-  const zoneReturn = !foul && !loseSet && shot.returnedPastZone && shot.darkAtStart.size === 0;
+  const zoneReturn = cfg.zoneReturn && !foul && !loseSet && shot.returnedPastZone && shot.darkAtStart.size === 0;
   const keepTurn = !foul && !loseSet && !zoneReturn && ownIn.length > 0 && oppIn.length === 0 && pawnsOut.length === 0;
   return { p, ownIn, oppIn, strikerIn, strikerOut, outs, pawnsOut, foul, keepTurn, loseSet, zoneReturn, undoHang };
 }

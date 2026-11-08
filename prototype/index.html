@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=28">
+  <link rel="stylesheet" href="style.css?v=29">
 </head>
 <body>
   <div id="app">
@@ -206,6 +206,7 @@
         <div class="group-title">Правила</div>
         <label class="check"><input type="checkbox" data-key="circleDark"> Центральный круг — тёмное поле (п. 11.2)</label>
         <label class="check"><input type="checkbox" data-key="freePlace"> Шайбу можно ставить на всей своей половине</label>
+        <label class="check"><input type="checkbox" data-key="zoneReturn"> Шайба не должна возвращаться в свою зону (п. 18.1.5)</label>
       </div>
 
       <div id="rulesNote" class="tip"></div>
@@ -256,6 +257,8 @@
       <label class="check"><input type="checkbox" id="optCircleDark" checked> Центральный круг — тёмное поле (п. 11.2)</label>
       <div class="note">Если выключить, пешка в круге считается светлой, и по ней можно бить прямым ударом. Так играют по некоторым местным правилам.</div>
       <label class="check"><input type="checkbox" id="optFree"> Шайбу можно ставить на всей своей половине</label>
+      <label class="check"><input type="checkbox" id="optZoneReturn"> Шайба не должна возвращаться в свою зону (п. 18.1.5)</label>
+      <div class="note">По официальным правилам без своих тёмных пешек шайба на обратном ходу не заезжает за линию своей бортовой зоны. Выключено: серия не обрывается, если шайба вернулась «домой».</div>
     </details>
 
     <details class="block">
@@ -289,19 +292,19 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=28"></script>
-  <script src="js/state.js?v=28"></script>
-  <script src="js/zones.js?v=28"></script>
-  <script src="js/shot.js?v=28"></script>
-  <script src="js/physics.js?v=28"></script>
-  <script src="js/referee.js?v=28"></script>
-  <script src="js/ai.js?v=28"></script>
-  <script src="js/records.js?v=28"></script>
-  <script src="js/render.js?v=28"></script>
-  <script src="js/input.js?v=28"></script>
-  <script src="js/ui.js?v=28"></script>
-  <script src="js/net-config.js?v=28"></script>
-  <script src="js/net.js?v=28"></script>
-  <script src="js/main.js?v=28"></script>
+  <script src="js/config.js?v=29"></script>
+  <script src="js/state.js?v=29"></script>
+  <script src="js/zones.js?v=29"></script>
+  <script src="js/shot.js?v=29"></script>
+  <script src="js/physics.js?v=29"></script>
+  <script src="js/referee.js?v=29"></script>
+  <script src="js/ai.js?v=29"></script>
+  <script src="js/records.js?v=29"></script>
+  <script src="js/render.js?v=29"></script>
+  <script src="js/input.js?v=29"></script>
+  <script src="js/ui.js?v=29"></script>
+  <script src="js/net-config.js?v=29"></script>
+  <script src="js/net.js?v=29"></script>
+  <script src="js/main.js?v=29"></script>
 </body>
 </html>

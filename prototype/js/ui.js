@@ -192,7 +192,7 @@ function refreshControls() {
   document.getElementById('groupLevel').classList.toggle('dim', cfg.mode !== 'ai' || net.active);
   // В сетевой партии условия общие для обоих — их задал создатель комнаты.
   for (const id of ['groupTable', 'groupHint', 'groupTime']) document.getElementById(id).classList.toggle('locked', net.active);
-  for (const id of ['optCircleDark', 'optFree']) document.getElementById(id).disabled = net.active;
+  for (const id of ['optCircleDark', 'optFree', 'optZoneReturn']) document.getElementById(id).disabled = net.active;
   document.getElementById('tableNote').textContent = TABLE_STATES[cfg.table].note;
   document.getElementById('hintNote').textContent = HINT_MODES[cfg.hintLen].note;
   document.getElementById('timeNote').textContent = cfg.shotTime
@@ -205,7 +205,7 @@ function refreshControls() {
 
 // Условия, которые в сетевой игре одинаковы у обоих игроков.
 function currentRules() {
-  return { shotTime: cfg.shotTime, table: cfg.table, hintLen: cfg.hintLen, circleDark: cfg.circleDark, freePlace: cfg.freePlace };
+  return { shotTime: cfg.shotTime, table: cfg.table, hintLen: cfg.hintLen, circleDark: cfg.circleDark, freePlace: cfg.freePlace, zoneReturn: cfg.zoneReturn };
 }
 
 function applyRules(r) {
@@ -214,8 +214,10 @@ function applyRules(r) {
   if (HINT_MODES[r.hintLen]) cfg.hintLen = r.hintLen;
   cfg.circleDark = r.circleDark !== false;
   cfg.freePlace = Boolean(r.freePlace);
+  cfg.zoneReturn = Boolean(r.zoneReturn);
   document.getElementById('optCircleDark').checked = cfg.circleDark;
   document.getElementById('optFree').checked = cfg.freePlace;
+  document.getElementById('optZoneReturn').checked = cfg.zoneReturn;
   refreshControls();
 }
 
@@ -273,6 +275,7 @@ bindRange('optVMax', () => cfg.vMax, v => { cfg.vMax = v; });
 bindRange('optClimbPawn', () => cfg.climbThr.pawn, v => { cfg.climbThr.pawn = v; });
 
 bindCheck('optCircleDark', 'circleDark', updatePanel);
+bindCheck('optZoneReturn', 'zoneReturn');
 bindSelect('optPowerSide', () => cfg.powerSide, v => {
   cfg.powerSide = v;
   resize();
