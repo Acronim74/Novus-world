@@ -6,11 +6,14 @@
 const AI_PLAYER = 1;
 const AI_LEVELS = {
   1: { name: 'Новичок', spots: 1, speeds: [1.6], banks: false, blind: 0.4, pick: 5,
-       robustTop: 0, robustRuns: 0, angleSigma: 2.2, powerSigma: 0.18, minThink: 500 },
-  2: { name: 'Любитель', spots: 2, speeds: [1.3, 1.9], banks: 'dark', blind: 0, pick: 1,
-       robustTop: 4, robustRuns: 2, angleSigma: 0.7, powerSigma: 0.07, minThink: 700 },
-  3: { name: 'Мастер', spots: 3, speeds: [1.2, 1.6, 2.3], banks: true, blind: 0, pick: 1,
-       robustTop: 6, robustRuns: 4, angleSigma: 0.25, powerSigma: 0.03, minThink: 900 },
+       robustTop: 0, robustRuns: 0, angleSigma: 2.2, powerSigma: 0.18, minThink: 500,
+       breakPowers: [0.7] },
+  2: { name: 'Любитель', spots: 3, speeds: [1.4, 2.0, 3.2], banks: 'dark', blind: 0, pick: 1,
+       robustTop: 6, robustRuns: 3, angleSigma: 0.4, powerSigma: 0.04, minThink: 800,
+       breakPowers: [0.8, 0.95] },
+  3: { name: 'Мастер', spots: 4, speeds: [1.2, 1.8, 2.8, 4.0], banks: true, blind: 0, pick: 1,
+       robustTop: 8, robustRuns: 5, angleSigma: 0.12, powerSigma: 0.018, minThink: 1000,
+       breakPowers: [0.72, 0.88, 1.0] },
 };
 const POCKET_NAMES = ['левую верхнюю', 'правую верхнюю', 'левую нижнюю', 'правую нижнюю'];
 
@@ -103,7 +106,7 @@ async function planShot(p, L, token) {
   };
 
   for (const c of cands) {
-    c.score = simulateCandidate(p, c, 0, 0);
+    c.score = simulateCandidate(p, c, 0, 0, 1);
     if (!(await stillValid())) return null;
   }
   cands.sort((a, b) => b.score - a.score);
@@ -114,7 +117,7 @@ async function planShot(p, L, token) {
     for (const c of top) {
       let sum = c.score;
       for (let k = 0; k < L.robustRuns; k++) {
-        sum += simulateCandidate(p, c, L.angleSigma, L.powerSigma);
+        sum += simulateCandidate(p, c, L.angleSigma, L.powerSigma, 2 + k);
         if (!(await stillValid())) return null;
       }
       c.avg = sum / (L.robustRuns + 1);
@@ -125,7 +128,7 @@ async function planShot(p, L, token) {
   return cands[Math.floor(Math.random() * Math.min(L.pick, cands.length))];
 }
 
-function simulateCandidate(p, c, angleSigma, powerSigma) {
+function simulateCandidate(p, c, angleSigma, powerSigma, seed = 1) {
   const saved = bodies.map(b => ({ ...b }));
   const savedShot = shot;
   striker.x = c.x;
@@ -133,6 +136,7 @@ function simulateCandidate(p, c, angleSigma, powerSigma) {
   const a = Math.atan2(c.dirY, c.dirX) + gauss() * angleSigma * Math.PI / 180;
   const v = Math.min(cfg.vMax, c.speed * (1 + gauss() * powerSigma));
   shot = makeShotRecord(p);
+  seedPhysics(seed);
   striker.vx = Math.cos(a) * v;
   striker.vy = Math.sin(a) * v;
   for (let s = 0; s < 6000 && !allStopped(); s++) physicsStep(DT);
@@ -144,9 +148,10 @@ function simulateCandidate(p, c, angleSigma, powerSigma) {
 
 function scoreOutcome(p) {
   const j = judgeShot();
-  let s = j.ownIn.length * 100 - j.oppIn.length * 70 - j.pawnsOut.length * 40;
+  let s = j.ownIn.length * 120 - j.oppIn.length * 80 - j.pawnsOut.length * 40;
+  if (j.ownIn.length > 1) s += 50 * (j.ownIn.length - 1);
   if (j.foul) s -= 150;
-  if (j.keepTurn) s += 40 + positionValue(p);
+  if (j.keepTurn) s += 50 + positionValue(p);
   else s -= positionValue(1 - p);
   return s;
 }
@@ -268,6 +273,36 @@ function bankAim(p, sx, sy, gx, gy) {
   return null;
 }
 
+// Сильный удар по своему ряду у противоположного борта: крайние пешки едут в углы.
+function addRowBreaks(p, L, spots, cands) {
+  if (!L.breakPowers?.length) return;
+  const r = STRIKER_SPEC.r;
+  const railY = PLAYERS[p].rail === 'bottom' ? PAWN_SPEC.r : FIELD - PAWN_SPEC.r;
+  const row = bodies.filter(b => b.kind === 'pawn' && b.owner === p && b.state === 'table' && Math.abs(b.y - railY) < 10);
+  if (row.length < 3) return;
+  row.sort((a, b) => a.x - b.x);
+  const toward = PLAYERS[p].rail === 'bottom' ? -1 : 1;
+  const aims = [
+    { x: row[Math.floor(row.length / 2)].x, y: railY, name: 'в центр своего ряда' },
+    { x: row[1].x, y: railY, name: 'в левую часть своего ряда' },
+    { x: row[row.length - 2].x, y: railY, name: 'в правую часть своего ряда' },
+  ];
+  for (const t of aims) {
+    for (const s of bestSpots(p, spots, t.x, t.y, 0, toward, L.spots)) {
+      const dx = t.x - s.x;
+      const dy = t.y - s.y;
+      const dl = Math.hypot(dx, dy) || 1;
+      const dirX = dx / dl;
+      const dirY = dy / dl;
+      const hit = castRay(s.x, s.y, dirX, dirY, r);
+      if (hit.type !== 'body' || hit.body.owner !== p) continue;
+      for (const k of L.breakPowers) {
+        cands.push({ x: s.x, y: s.y, dirX, dirY, speed: cfg.vMax * k, label: `сильный удар ${t.name}` });
+      }
+    }
+  }
+}
+
 function generateCandidates(p, L) {
   const cands = [];
   const spots = placementSamples(p);
@@ -329,6 +364,8 @@ function generateCandidates(p, L) {
       }
     });
   }
+
+  addRowBreaks(p, L, spots, cands);
 
   // Запасные удары: хотя бы попасть в свою пешку и не получить штраф.
   for (const pawn of light) {
