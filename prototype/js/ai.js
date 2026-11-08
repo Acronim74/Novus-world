@@ -273,31 +273,78 @@ function bankAim(p, sx, sy, gx, gy) {
   return null;
 }
 
-// Сильный удар по своему ряду у противоположного борта: крайние пешки едут в углы.
+function farRailY(p) {
+  return PLAYERS[p].rail === 'bottom' ? PAWN_SPEC.r : FIELD - PAWN_SPEC.r;
+}
+
+function ownRailClusters(p) {
+  const y0 = farRailY(p);
+  const row = bodies.filter(b => b.kind === 'pawn' && b.owner === p && b.state === 'table' && Math.abs(b.y - y0) < 18)
+    .sort((a, b) => a.x - b.x);
+  const clusters = [];
+  let cur = [];
+  for (const b of row) {
+    if (cur.length && b.x - cur.at(-1).x > PAWN_SPEC.r * 2 + 10) {
+      if (cur.length >= 2) clusters.push(cur);
+      cur = [];
+    }
+    cur.push(b);
+  }
+  if (cur.length >= 2) clusters.push(cur);
+  return clusters;
+}
+
+function sidePlacement(p, side) {
+  const a = placementArea(p);
+  const xs = side === 'left' ? [a.x0, a.x0 + 55] : [a.x1, a.x1 - 55];
+  const out = [];
+  for (const x of xs) {
+    for (const d of [a.d0, a.d1]) {
+      const y = yAtDepth(p, d);
+      if (!placementProblem(p, x, y)) out.push({ x, y });
+    }
+  }
+  return out;
+}
+
+// С угла своей зоны в край плотного ряда — так крайние пешки едут в лузу, а не разлетаются от прямого удара.
 function addRowBreaks(p, L, spots, cands) {
   if (!L.breakPowers?.length) return;
   const r = STRIKER_SPEC.r;
-  const railY = PLAYERS[p].rail === 'bottom' ? PAWN_SPEC.r : FIELD - PAWN_SPEC.r;
-  const row = bodies.filter(b => b.kind === 'pawn' && b.owner === p && b.state === 'table' && Math.abs(b.y - railY) < 10);
-  if (row.length < 3) return;
-  row.sort((a, b) => a.x - b.x);
-  const toward = PLAYERS[p].rail === 'bottom' ? -1 : 1;
-  const aims = [
-    { x: row[Math.floor(row.length / 2)].x, y: railY, name: 'в центр своего ряда' },
-    { x: row[1].x, y: railY, name: 'в левую часть своего ряда' },
-    { x: row[row.length - 2].x, y: railY, name: 'в правую часть своего ряда' },
-  ];
-  for (const t of aims) {
-    for (const s of bestSpots(p, spots, t.x, t.y, 0, toward, L.spots)) {
-      const dx = t.x - s.x;
-      const dy = t.y - s.y;
-      const dl = Math.hypot(dx, dy) || 1;
-      const dirX = dx / dl;
-      const dirY = dy / dl;
-      const hit = castRay(s.x, s.y, dirX, dirY, r);
-      if (hit.type !== 'body' || hit.body.owner !== p) continue;
-      for (const k of L.breakPowers) {
-        cands.push({ x: s.x, y: s.y, dirX, dirY, speed: cfg.vMax * k, label: `сильный удар ${t.name}` });
+  const y0 = farRailY(p);
+  const farTop = y0 < FIELD / 2;
+  const leftPk = POCKETS.find(pk => pk.x < FIELD / 2 && (farTop ? pk.y < FIELD / 2 : pk.y > FIELD / 2));
+  const rightPk = POCKETS.find(pk => pk.x > FIELD / 2 && (farTop ? pk.y < FIELD / 2 : pk.y > FIELD / 2));
+
+  for (const cluster of ownRailClusters(p)) {
+    const ends = [
+      { side: 'left', end: cluster[0], next: cluster[1], pk: leftPk, name: 'левый край ряда' },
+      { side: 'right', end: cluster.at(-1), next: cluster.at(-2), pk: rightPk, name: 'правый край ряда' },
+    ];
+    for (const { side, end, next, pk, name } of ends) {
+      const aims = [{ x: end.x, y: end.y }];
+      if (next) aims.push({ x: next.x, y: next.y });
+      aims.push({ x: end.x + (side === 'left' ? -30 : 30), y: end.y });
+      if (pk) {
+        const ul = Math.hypot(end.x - pk.x, end.y - pk.y) || 1;
+        aims.push({
+          x: end.x - (end.x - pk.x) / ul * 40,
+          y: end.y - (end.y - pk.y) / ul * 40,
+        });
+      }
+      for (const s of sidePlacement(p, side)) {
+        for (const t of aims) {
+          const dx = t.x - s.x;
+          const dy = t.y - s.y;
+          const dl = Math.hypot(dx, dy) || 1;
+          const dirX = dx / dl;
+          const dirY = dy / dl;
+          const hit = castRay(s.x, s.y, dirX, dirY, r);
+          if (hit.type !== 'body' || hit.body.owner !== p) continue;
+          for (const k of L.breakPowers) {
+            cands.push({ x: s.x, y: s.y, dirX, dirY, speed: cfg.vMax * k, label: `с угла в ${name}` });
+          }
+        }
       }
     }
   }
@@ -308,6 +355,7 @@ function generateCandidates(p, L) {
   const spots = placementSamples(p);
   const own = bodies.filter(b => b.kind === 'pawn' && b.owner === p && b.state === 'table');
   const light = own.filter(b => !isDark(b));
+  const clustered = new Set(ownRailClusters(p).flat());
   const R = STRIKER_SPEC.r + PAWN_SPEC.r;
   const r = STRIKER_SPEC.r;
   const step = Math.max(1, Math.ceil(spots.length / 4));
@@ -326,7 +374,8 @@ function generateCandidates(p, L) {
       const travel = Math.max(10, ul - POCKET_R * 0.6);
       const target = `${dark ? 'тёмную' : 'светлую'} пешку в ${POCKET_NAMES[k]} лузу`;
 
-      if (!dark) {
+      // Плотный ряд у борта бьём с угла, не прямым ударом под 90°.
+      if (!dark && !clustered.has(pawn)) {
         for (const s of bestSpots(p, spots, gx, gy, -ux, -uy, L.spots)) {
           const dx = gx - s.x;
           const dy = gy - s.y;
@@ -369,6 +418,7 @@ function generateCandidates(p, L) {
 
   // Запасные удары: хотя бы попасть в свою пешку и не получить штраф.
   for (const pawn of light) {
+    if (clustered.has(pawn)) continue;
     const near = [...spots].sort((u, v) => Math.abs(u.x - pawn.x) - Math.abs(v.x - pawn.x)).slice(0, 2);
     for (const s of near) {
       const dx = pawn.x - s.x;
