@@ -219,8 +219,9 @@ function checkPockets(b, dt) {
     for (const pk of POCKETS) {
       const d = Math.hypot(b.x - pk.x, b.y - pk.y);
       // У борта центр пешки идёт по краю лузы, но диск уже над отверстием.
-      // Прибавка только пешке у борта: шайба и свободные фишки проверяются по Ø100.
-      const alongRail = b.kind === 'pawn' && RAILS.some(r => r.gap(b) <= b.r + 0.5);
+      // Прибавка только пешке у борта: шайба и свободные фишки — Ø100.
+      // Допуск 5 мм, не 0,5: после удара ряд отходит от борта на 1–4 мм, иначе луза снова узкая.
+      const alongRail = b.kind === 'pawn' && RAILS.some(r => r.gap(b) <= b.r + 5);
       const reach = POCKET_R + (alongRail ? b.r * 0.45 : 0);
       if (d < reach) overhang = Math.max(overhang, Math.min(1, (reach - d) / b.r));
     }
