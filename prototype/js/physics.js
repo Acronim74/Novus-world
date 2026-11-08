@@ -92,8 +92,6 @@ function collidePucks(a, b) {
   clampToRails(b);
   springBack(b, a, nx, ny, 1 - fb);
   springBack(a, b, -nx, -ny, 1 - fa);
-  clampToRails(a);
-  clampToRails(b);
   // Сжатый у борта ряд выдавливает пешки в поле: удар идёт не строго вдоль борта, а под углом.
   buckleOffRail(a, b, nx, ny, vrel);
 
