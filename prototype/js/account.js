@@ -70,7 +70,7 @@ function mergeGames(a, b) {
 
 function authMessage(err) {
   const code = err?.code || '';
-  if (code === 'auth/popup-blocked') return 'Браузер закрыл окно входа. Разрешите всплывающие окна или попробуйте ещё раз.';
+  if (code === 'auth/popup-blocked') return 'Телефон закрыл окно Google. Разрешите всплывающие окна для этого сайта и нажмите ещё раз.';
   if (code === 'auth/popup-closed-by-user') return 'Окно входа закрыли. Попробуйте ещё раз.';
   if (code === 'auth/operation-not-allowed') return 'В консоли Firebase нужно включить вход через Google и через почту (Authentication → Sign-in method).';
   if (code === 'auth/unauthorized-domain') return 'Этот адрес сайта ещё не разрешён в Firebase: Authentication → Settings → Authorized domains.';
@@ -89,8 +89,12 @@ function accountPath(sub) {
   return `users/${account.user.uid}/${sub}`;
 }
 
-function preferAuthRedirect() {
-  return matchMedia('(pointer: coarse)').matches || /iPhone|iPad|Android/i.test(navigator.userAgent);
+function accountBlocked() {
+  if (new URLSearchParams(location.search).get('net') === 'local') {
+    return 'Кабинет работает с облаком. Откройте игру без ?net=local.';
+  }
+  if (net.code) return 'Сначала выйдите из комнаты — вход меняет аккаунт.';
+  return '';
 }
 
 async function cloudGet(sub) {
@@ -209,17 +213,45 @@ function googleProvider() {
 }
 
 async function signInGoogle() {
-  await withAccount(async () => {
-    const auth = firebase.auth();
-    const provider = googleProvider();
-    // Всегда вход, не привязка гостя: иначе со второго устройства Google «уже занят».
-    if (preferAuthRedirect()) {
-      sessionStorage.setItem('novus.openAccount', '1');
+  const blocked = accountBlocked();
+  if (blocked) {
+    account.error = blocked;
+    renderAccount();
+    return;
+  }
+  account.error = '';
+  account.notice = '';
+  // Окно Google нужно открыть сразу по нажатию. Если сначала ждать сеть, телефон блокирует вход.
+  if (!window.firebase?.auth) {
+    account.notice = 'Подключаемся к серверу… нажмите «Войти через Google» ещё раз.';
+    renderAccount();
+    try {
+      await netBackend();
+      account.notice = 'Готово — нажмите «Войти через Google» ещё раз.';
+    } catch (e) {
+      account.notice = '';
+      account.error = authMessage(e);
+    }
+    renderAccount();
+    return;
+  }
+  const auth = firebase.auth();
+  const provider = googleProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (e) {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
+      localStorage.setItem('novus.authRedirect', '1');
       await auth.signInWithRedirect(provider);
       return;
     }
-    await auth.signInWithPopup(provider);
-  });
+    if (e.code === 'auth/popup-closed-by-user') {
+      account.error = 'Окно Google закрылось. На телефоне разрешите всплывающие окна для этого сайта и нажмите ещё раз.';
+    } else {
+      account.error = authMessage(e);
+    }
+    renderAccount();
+  }
 }
 
 async function signInEmail(create) {
@@ -352,18 +384,22 @@ function renderAccount() {
 
   box.innerHTML =
     '<p class="tip">Войдите — статистика и призы будут на телефоне, планшете и компьютере. На новом устройстве нажмите «Войти через Google» или введите ту же почту и пароль. Без входа всё остаётся только в этом браузере.</p>' +
-    `<button id="accGoogle" class="primary"${busy}>Войти через Google</button>` +
+    `<button type="button" id="accGoogle" class="primary"${busy}>Войти через Google</button>` +
     '<div class="acc-or">или почта и пароль</div>' +
-    '<label class="field">Почта<input id="accEmail" type="email" autocomplete="email"></label>' +
+    '<form id="accEmailForm">' +
+    '<label class="field">Почта<input id="accEmail" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false"></label>' +
     '<label class="field">Пароль<input id="accPass" type="password" autocomplete="current-password"></label>' +
     '<div class="sheet-actions acc-mail-actions">' +
-    `<button id="accEmailIn"${busy}>Войти</button>` +
-    `<button id="accEmailUp" class="primary"${busy}>Создать аккаунт</button>` +
-    '</div>' +
+    `<button type="submit" id="accEmailIn"${busy}>Войти</button>` +
+    `<button type="button" id="accEmailUp" class="primary"${busy}>Создать аккаунт</button>` +
+    '</div></form>' +
     notice + err +
     '<h3>Призы на этом устройстве</h3><div class="prizes">' + prizes + '</div>';
   document.getElementById('accGoogle').addEventListener('click', signInGoogle);
-  document.getElementById('accEmailIn').addEventListener('click', () => signInEmail(false));
+  document.getElementById('accEmailForm').addEventListener('submit', e => {
+    e.preventDefault();
+    signInEmail(false);
+  });
   document.getElementById('accEmailUp').addEventListener('click', () => signInEmail(true));
 }
 
@@ -393,20 +429,13 @@ document.getElementById('account').addEventListener('click', e => {
 document.getElementById('recordsCloudNote')?.addEventListener('click', openAccount);
 renderAccount();
 
-function hasSavedAuth() {
-  try {
-    return Object.keys(localStorage).some(k => k.startsWith('firebase:authUser'));
-  } catch {
-    return false;
-  }
-}
-
-const openAfterRedirect = sessionStorage.getItem('novus.openAccount');
+const openAfterRedirect = localStorage.getItem('novus.authRedirect') || sessionStorage.getItem('novus.openAccount');
 if (openAfterRedirect) {
+  localStorage.removeItem('novus.authRedirect');
   sessionStorage.removeItem('novus.openAccount');
   openAccount();
 }
-if ((openAfterRedirect || hasSavedAuth()) && new URLSearchParams(location.search).get('net') !== 'local') {
+if (new URLSearchParams(location.search).get('net') !== 'local') {
   netBackend().then(() => {
     if (window._authRedirectError) {
       account.error = authMessage(window._authRedirectError);
@@ -414,5 +443,7 @@ if ((openAfterRedirect || hasSavedAuth()) && new URLSearchParams(location.search
       openAccount();
       renderAccount();
     }
-  }).catch(() => {});
+  }).catch(e => {
+    account.error = authMessage(e);
+  });
 }

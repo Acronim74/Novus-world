@@ -65,11 +65,16 @@ const firebaseBackend = {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     const auth = firebase.auth();
     try {
+      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    } catch {
+      // Старые WebView без постоянного хранилища — вход всё равно попробуем.
+    }
+    try {
       await auth.getRedirectResult();
     } catch (err) {
       window._authRedirectError = err;
     }
-    const known = await new Promise(resolve => {
+    const known = auth.currentUser || await new Promise(resolve => {
       const off = auth.onAuthStateChanged(u => {
         off();
         resolve(u);
