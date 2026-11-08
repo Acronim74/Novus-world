@@ -15,6 +15,9 @@ let toast = null;
 let gameId = 0;
 let gameStartedAt = 0;
 let turnDeadline = 0;
+let firstShooter = 0;
+let lostTurn = [false, false];
+let setWinner = undefined;
 
 function newStats() {
   return { fouls: 0, strikerLost: 0, pawnsOut: 0, oppIn: 0, history: [] };
@@ -48,6 +51,9 @@ function newGame() {
   current = 0;
   debt = [0, 0];
   winnerText = null;
+  firstShooter = 0;
+  lostTurn = [false, false];
+  setWinner = undefined;
   snapshot = null;
   stats = [newStats(), newStats()];
   lastShot = null;

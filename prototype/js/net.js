@@ -397,7 +397,7 @@ function netShotStarted(seed) {
 function serializeState() {
   return {
     bodies: bodies.map(b => [b.x, b.y, b.state]),
-    current, debt, stats, lastShot, winnerText,
+    current, debt, stats, lastShot, winnerText, firstShooter, lostTurn, setWinner,
     over: phase === 'over',
   };
 }
@@ -464,6 +464,8 @@ function applyState(st) {
   stats = d.stats;
   lastShot = d.lastShot;
   winnerText = d.winnerText;
+  if (d.firstShooter != null) firstShooter = d.firstShooter;
+  if (d.lostTurn) lostTurn = d.lostTurn;
   shot = null;
   net.peerAiming = false;
   if (lastShot) {
@@ -473,8 +475,11 @@ function applyState(st) {
   }
   if (d.over) {
     phase = 'over';
+    setWinner = d.setWinner;
     const left = [pawnsOnTable(0) + debt[0], pawnsOnTable(1) + debt[1]];
-    recordGame(left[0] === 0 && left[1] === 0 ? null : left[0] === 0 ? 0 : 1, left.map(n => 8 - n));
+    recordGame(d.setWinner === undefined
+      ? (left[0] === 0 && left[1] === 0 ? null : left[0] === 0 ? 0 : 1)
+      : d.setWinner, left.map(n => 8 - n));
     updatePanel();
   } else {
     startTurn();

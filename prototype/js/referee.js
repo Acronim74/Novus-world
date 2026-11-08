@@ -94,12 +94,29 @@ function endShot() {
   }
   if (!keepTurn && debt[p] > 0) payDebt(p);
   if (keepTurn && pawnsOnTable(p) === 0 && debt[p] > 0) payDebt(p);
+  if (!keepTurn) lostTurn[p] = true;
 
   const left = [pawnsOnTable(0) + debt[0], pawnsOnTable(1) + debt[1]];
   let winner;
   if (left[0] === 0 && left[1] === 0) {
-    winner = null;
-    winnerText = 'Обе стороны забили все пешки — сет переигрывается (п. 20.5)';
+    if (foul) {
+      winner = opp;
+      winnerText = `${PLAYERS[opp].name} выиграли сет: последние пешки забиты с нарушением (п. 20.4, 20.5)`;
+    } else if (!lostTurn[p] && p !== firstShooter) {
+      winner = null;
+      winnerText = 'Оба первой серией забили все пешки — сет переигрывается (п. 20.4)';
+    } else {
+      winner = null;
+      winnerText = 'Обе стороны забили все пешки — сет переигрывается (п. 20.5)';
+    }
+  } else if (left[p] === 0 && keepTurn && !lostTurn[p] && p === firstShooter) {
+    // п. 20.4: первую серию на все 8 прерывают, соперник получает право на удар.
+    shot = null;
+    log('Первая серия на все 8 пешек. Серия прерывается, ход переходит сопернику (п. 20.4).', 'info');
+    setLastShot(p, items, { cls: 'pass', text: 'Все 8 забиты. Ход сопернику (п. 20.4)' });
+    current = opp;
+    startTurn();
+    return;
   } else if (left[0] === 0 || left[1] === 0) {
     winner = left[0] === 0 ? 0 : 1;
     winnerText = `${PLAYERS[winner].name} выиграли сет!`;
@@ -108,6 +125,7 @@ function endShot() {
   shot = null;
   if (winnerText) {
     phase = 'over';
+    setWinner = winner;
     recordGame(winner, left.map(n => 8 - n));
     log(winnerText, 'ok');
     setLastShot(p, items, { cls: 'win', text: winnerText });
@@ -146,6 +164,7 @@ function timeoutShot() {
   stats[p].fouls++;
   stats[p].history.unshift('время на удар истекло (п. 17.1.15)');
   if (debt[p] > 0) payDebt(p);
+  lostTurn[p] = true;
   setLastShot(p, [{ cls: 'bad', icon: '⏱', text: `Время на удар (${cfg.shotTime} с) истекло. ${toDebt ? 'Штрафная пешка в долг' : 'Штрафная пешка выставлена'}` }],
     { cls: 'foul', text: 'Время вышло. Штраф, ход переходит' });
   current = 1 - p;

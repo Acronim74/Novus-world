@@ -37,6 +37,8 @@ function takeSnapshot() {
     debt: [...debt],
     stats: stats.map(s => ({ ...s, history: [...s.history] })),
     lastShot,
+    firstShooter,
+    lostTurn: [...lostTurn],
   };
 }
 
@@ -49,8 +51,11 @@ function restoreSnapshot() {
   debt = [...snapshot.debt];
   stats = snapshot.stats.map(s => ({ ...s, history: [...s.history] }));
   lastShot = snapshot.lastShot;
+  firstShooter = snapshot.firstShooter;
+  lostTurn = [...snapshot.lostTurn];
   toast = null;
   winnerText = null;
+  setWinner = undefined;
   phase = 'place';
   aim.power = 0;
   aiShowCue = false;
