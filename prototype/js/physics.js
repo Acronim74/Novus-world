@@ -87,6 +87,9 @@ function collidePucks(a, b) {
   a.vy -= j * ia * ny;
   b.vx += j * ib * nx;
   b.vy += j * ib * ny;
+  // Прижатая к борту фишка не уходит в борт: удар идёт вдоль ряда к углу.
+  slideAlongRails(a);
+  slideAlongRails(b);
   springBack(b, a, nx, ny, 1 - fb);
   springBack(a, b, -nx, -ny, 1 - fa);
 
@@ -96,7 +99,9 @@ function collidePucks(a, b) {
 
   if (vrel > cfg.hopThr) {
     const light = a.m < b.m ? a : b.m < a.m ? b : (physRandom() < 0.5 ? a : b);
-    light.vz += (vrel - cfg.hopThr) * cfg.hopK * (0.5 + physRandom());
+    // Прижатая к борту пешка не подскакивает: удар остаётся в плоскости и идёт вдоль ряда.
+    const pressed = RAILS.some(r => r.gap(light) <= light.r + 0.5);
+    if (!pressed) light.vz += (vrel - cfg.hopThr) * cfg.hopK * (0.5 + physRandom());
   }
 }
 
@@ -126,6 +131,20 @@ function springBack(body, other, nx, ny, support) {
   body.vy += dv * ny;
 }
 
+// Фишка, прижатая к борту, не может двигаться в борт: эта часть удара гасится,
+// и фишка уходит вдоль борта, толкая соседей по ряду.
+function slideAlongRails(b) {
+  if (b.z >= RAIL_H) return;
+  for (const rail of RAILS) {
+    if (rail.gap(b) > b.r + 0.5) continue;
+    const vn = b.vx * rail.nx + b.vy * rail.ny;
+    if (vn < 0) {
+      b.vx -= vn * rail.nx;
+      b.vy -= vn * rail.ny;
+    }
+  }
+}
+
 function collideRails(b) {
   for (const rail of RAILS) {
     const gap = rail.gap(b);
@@ -137,9 +156,11 @@ function collideRails(b) {
       continue;
     }
     if (gap >= b.r) continue;
+    // Над лузой борт обрывается: фишка сваливается в отверстие, а не отскакивает от угла.
+    if (overPocket(b, b.r * 0.25)) continue;
 
     const vn = -(b.vx * rail.nx + b.vy * rail.ny);
-    if (vn > 0) {
+    if (vn > 80) {
       const excess = vn - cfg.climbThr[b.kind];
       if (excess > 0 && physRandom() < Math.min(cfg.climbMax[b.kind], excess / cfg.climbRange[b.kind])) {
         b.climb = rail.side;
@@ -157,6 +178,9 @@ function collideRails(b) {
       b.vy = rail.ny * vnOut + ty * vt;
       popUp(b, vn);
       noteRail(b, rail.side);
+    } else if (vn > 0) {
+      b.vx += vn * rail.nx;
+      b.vy += vn * rail.ny;
     }
     const pen = b.r - gap;
     b.x += rail.nx * pen;
@@ -166,12 +190,19 @@ function collideRails(b) {
 
 // Фишка над отверстием проседает тем быстрее, чем дальше её центр за краем.
 // Пока она просела меньше чем на половину толщины, край ещё может вытолкнуть её обратно.
+function overPocket(b, extra = 0) {
+  return POCKETS.some(pk => Math.hypot(b.x - pk.x, b.y - pk.y) < POCKET_R + extra);
+}
+
 function checkPockets(b, dt) {
   let overhang = 0;
   if (b.z === 0) {
     for (const pk of POCKETS) {
       const d = Math.hypot(b.x - pk.x, b.y - pk.y);
-      if (d < POCKET_R) overhang = Math.max(overhang, Math.min(1, (POCKET_R - d) / b.r));
+      // У борта центр пешки проходит ровно по краю лузы, но половина диска уже над отверстием —
+      // так забивают первым ударом, катя пешку вдоль борта в угол.
+      const reach = POCKET_R + b.r * 0.45;
+      if (d < reach) overhang = Math.max(overhang, Math.min(1, (reach - d) / b.r));
     }
   }
   if (overhang === 0) {

@@ -14,7 +14,7 @@ const PAWN_SPEC = { r: 15, h: 12, hole: 4, mass: 5 };
 
 const G = 9810;
 const DT = 1 / 1000;
-const SOLVER_ITERATIONS = 2;
+const SOLVER_ITERATIONS = 4;
 const MAX_PULL_PX = 220;
 
 const POCKETS = [
