@@ -75,7 +75,7 @@ const cfg = {
   hopThr: 2000,
   hopK: 0.16,
   // Насколько сжатый у борта ряд выдавливает пешки в поле (0 — только вдоль борта).
-  railBuckle: 0.005,
+  railBuckle: 0.002,
   mode: 'ai',
   level: 2,
   hintLen: 'full',
