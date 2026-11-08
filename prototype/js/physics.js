@@ -87,11 +87,10 @@ function collidePucks(a, b) {
   a.vy -= j * ia * ny;
   b.vx += j * ib * nx;
   b.vy += j * ib * ny;
-  // Прижатая к борту фишка не уходит в борт: удар идёт вдоль ряда к углу.
-  slideAlongRails(a);
-  slideAlongRails(b);
   springBack(b, a, nx, ny, 1 - fb);
   springBack(a, b, -nx, -ny, 1 - fa);
+  // Сжатый у борта ряд выдавливает пешки в поле: удар идёт не строго вдоль борта, а под углом.
+  buckleOffRail(a, b, nx, ny, vrel);
 
   noteContact(a, b, vrel);
   popUp(a, vrel);
@@ -105,8 +104,8 @@ function collidePucks(a, b) {
   }
 }
 
-// Насколько фишка может сдвинуться в направлении (dx, dy): борт, к которому она прижата,
-// держит её. В углу между двумя бортами по диагонали фишка неподвижна.
+// Насколько фишка может сдвинуться в направлении (dx, dy): борт не даёт пройти сквозь себя,
+// но часть удара под углом остаётся — её борт потом отражает, и ряд расходится веером.
 function freedom(b, dx, dy) {
   let blocked = 0;
   if (b.z < RAIL_H) {
@@ -116,7 +115,7 @@ function freedom(b, dx, dy) {
       if (into > 0) blocked += into * into;
     }
   }
-  return Math.max(0, 1 - blocked);
+  return Math.max(0.2, 1 - blocked * 0.7);
 }
 
 // Прижатая к борту фишка после удара пружинит от него и выходит следом за ударившей,
@@ -131,16 +130,19 @@ function springBack(body, other, nx, ny, support) {
   body.vy += dv * ny;
 }
 
-// Фишка, прижатая к борту, не может двигаться в борт: эта часть удара гасится,
-// и фишка уходит вдоль борта, толкая соседей по ряду.
-function slideAlongRails(b) {
-  if (b.z >= RAIL_H) return;
+function buckleOffRail(a, b, nx, ny, vrel) {
+  if (vrel < 40) return;
   for (const rail of RAILS) {
-    if (rail.gap(b) > b.r + 0.5) continue;
-    const vn = b.vx * rail.nx + b.vy * rail.ny;
-    if (vn < 0) {
-      b.vx -= vn * rail.nx;
-      b.vy -= vn * rail.ny;
+    const along = Math.abs(nx * -rail.ny + ny * rail.nx);
+    if (along < 0.15) continue;
+    const kick = vrel * along * 0.22;
+    if (rail.gap(a) <= a.r + 1) {
+      a.vx += rail.nx * kick;
+      a.vy += rail.ny * kick;
+    }
+    if (rail.gap(b) <= b.r + 1) {
+      b.vx += rail.nx * kick;
+      b.vy += rail.ny * kick;
     }
   }
 }
