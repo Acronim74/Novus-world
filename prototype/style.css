@@ -828,7 +828,7 @@ body.net .buttons .react { display: block; }
   label.check { padding: 4px 0; }
 }
 
-@media (orientation: portrait) and (max-width: 820px) {
+@media (orientation: portrait) and (max-width: 1024px) {
   :root { --tabbar-h: 58px; }
 
   body {
@@ -1074,6 +1074,88 @@ body.net .buttons .react { display: block; }
     flex: 1;
     min-height: 0;
   }
+}
+
+/* Телефон в портрете: стол не выше 66% экрана, журнал занимает остаток. */
+@media (orientation: portrait) and (max-width: 699px) {
+  #stage {
+    flex: 0 0 auto;
+    height: min(calc(100vw + 44px), 66dvh);
+  }
+}
+
+/* Планшет в портрете: стол занимает всё свободное место, табло крупнее, последний удар виден. */
+@media (orientation: portrait) and (min-width: 700px) and (max-width: 1024px) {
+  #stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+  }
+
+  #mini { height: 44px; }
+  #mini b { font-size: 22px; }
+  #mini .timer { font-size: 18px; }
+
+  #touchBar button { width: 72px; min-height: 52px; font-size: 26px; }
+  #touchBar .undo, body.net #touchBar .react { font-size: 16px; }
+
+  #right {
+    flex: 0 0 auto;
+    max-height: 22vh;
+    min-height: 0;
+    padding-top: 0;
+  }
+
+  #right h2:nth-of-type(2), #fouls { display: none; }
+
+  .modal {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .modal .sheet, .modal .sheet.small, #online .sheet {
+    width: min(540px, 92vw);
+    max-height: 80vh;
+    border-radius: 16px;
+    padding-bottom: 16px;
+  }
+
+  .modal.closed .sheet { transform: scale(0.98); opacity: 0; }
+}
+
+/* Планшет лёжа: стол по центру, кнопки слева крупными, без нижней панели вкладок. */
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
+  #tabbar { display: none; }
+
+  .side {
+    width: clamp(168px, 15vw, 210px);
+    padding: 10px;
+    gap: 8px;
+  }
+
+  #left h1, #left .block { display: none; }
+
+  #turn { padding: 8px 10px; font-size: 14px; }
+  .card { padding: 8px 10px; }
+  .card .big { font-size: 22px; }
+
+  .buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .buttons button {
+    min-height: 48px;
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  .buttons #btnOnline, .buttons #btnDrawer { grid-column: 1 / -1; }
+  .full { display: none; }
+  .short { display: inline; }
+
+  #touchBar button { width: 68px; min-height: 52px; }
 }
 
 @media (orientation: landscape) and (max-height: 540px) {

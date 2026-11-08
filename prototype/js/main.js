@@ -42,6 +42,8 @@ function frame(now) {
 
 new ResizeObserver(resize).observe(document.getElementById('stage'));
 coarsePointer.addEventListener('change', resize);
+phonePortrait.addEventListener('change', resize);
+tabletPortrait.addEventListener('change', resize);
 resize();
 refreshControls();
 newGame();

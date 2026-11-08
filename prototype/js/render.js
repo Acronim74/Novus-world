@@ -93,16 +93,17 @@ const ctx = canvas.getContext('2d');
 const view = { s: 1, ox: 0, oy: 0, dpr: 1, gauge: null };
 const coarsePointer = window.matchMedia('(pointer: coarse)');
 
-const phonePortrait = window.matchMedia('(orientation: portrait) and (max-width: 820px)');
+const phonePortrait = window.matchMedia('(orientation: portrait) and (max-width: 699px)');
+const tabletPortrait = window.matchMedia('(orientation: portrait) and (min-width: 700px) and (max-width: 1024px)');
 
 // На сенсорном экране шкала силы — широкая полоса за бортом, её тянут пальцем.
 function wideGauge() {
   return coarsePointer.matches && cfg.powerSide !== 'off';
 }
 
-// На телефоне в портрете шкала лежит под столом, чтобы стол занял всю ширину экрана.
+// На телефоне и планшете в портрете шкала лежит под столом, чтобы стол занял всю ширину экрана.
 function bottomGauge() {
-  return wideGauge() && phonePortrait.matches;
+  return wideGauge() && (phonePortrait.matches || tabletPortrait.matches);
 }
 
 function resize() {
