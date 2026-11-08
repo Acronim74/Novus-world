@@ -16,7 +16,8 @@
 | `js/physics.js` | движение, столкновения, борта, лузы |
 | `js/referee.js` | судья: нарушения, штрафные пешки, смена хода |
 | `js/ai.js` | компьютерный соперник (3 уровня) |
-| `js/records.js` | статистика партий в `localStorage` |
+| `js/records.js` | статистика партий в `localStorage` и в облаке после входа |
+| `js/account.js` | кабинет: Google или почта, призы, синхронизация между устройствами |
 | `js/render.js` | отрисовка поля, фишек, подсказки, шкалы силы |
 | `js/input.js` | мышь и клавиатура |
 | `js/ui.js` | боковые панели и настройки |
@@ -31,3 +32,7 @@
 Комнаты хранятся в Firebase Realtime Database, правила доступа — `database.rules.json`
 (вставляются в консоли Firebase: Realtime Database → Rules). Для проверки без Firebase
 откройте игру с `?net=local` в двух вкладках одного браузера.
+
+Кабинет игрока (Google или почта) пишет статистику и призы в `users/{uid}`. В консоли Firebase
+нужно включить Authentication → Sign-in method: Google и Email/Password, добавить домен сайта
+в Authorized domains и опубликовать обновлённые правила базы.

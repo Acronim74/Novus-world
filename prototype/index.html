@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=29">
+  <link rel="stylesheet" href="style.css?v=30">
 </head>
 <body>
   <div id="app">
@@ -225,9 +225,19 @@
       </div>
       <div id="recordsBody"></div>
       <div class="sheet-foot">
-        <span class="note">Хранится только в этом браузере на этом устройстве.</span>
+        <span class="note" id="recordsCloudNote">Пока только в этом браузере. Войдите в кабинет, чтобы переносить статистику и призы на другие устройства.</span>
         <button id="btnRecordsReset">Сбросить</button>
       </div>
+    </div>
+  </div>
+
+  <div id="account" class="modal closed">
+    <div class="sheet" role="dialog" aria-label="Кабинет игрока">
+      <div class="drawer-head">
+        <span>Кабинет</span>
+        <button id="btnAccountClose" title="Закрыть">✕</button>
+      </div>
+      <div id="accountBody"></div>
     </div>
   </div>
 
@@ -237,6 +247,7 @@
       <button id="btnDrawerClose" title="Закрыть">✕</button>
     </div>
 
+    <button id="btnAccount">👤 Войти — статистика на всех устройствах</button>
     <button id="btnRecordsDrawer">📊 Статистика партий</button>
     <button id="btnInstall" hidden>📲 Установить как приложение</button>
     <div id="installNote" class="note" hidden></div>
@@ -292,19 +303,20 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=29"></script>
-  <script src="js/state.js?v=29"></script>
-  <script src="js/zones.js?v=29"></script>
-  <script src="js/shot.js?v=29"></script>
-  <script src="js/physics.js?v=29"></script>
-  <script src="js/referee.js?v=29"></script>
-  <script src="js/ai.js?v=29"></script>
-  <script src="js/records.js?v=29"></script>
-  <script src="js/render.js?v=29"></script>
-  <script src="js/input.js?v=29"></script>
-  <script src="js/ui.js?v=29"></script>
-  <script src="js/net-config.js?v=29"></script>
-  <script src="js/net.js?v=29"></script>
-  <script src="js/main.js?v=29"></script>
+  <script src="js/config.js?v=30"></script>
+  <script src="js/state.js?v=30"></script>
+  <script src="js/zones.js?v=30"></script>
+  <script src="js/shot.js?v=30"></script>
+  <script src="js/physics.js?v=30"></script>
+  <script src="js/referee.js?v=30"></script>
+  <script src="js/ai.js?v=30"></script>
+  <script src="js/records.js?v=30"></script>
+  <script src="js/render.js?v=30"></script>
+  <script src="js/input.js?v=30"></script>
+  <script src="js/ui.js?v=30"></script>
+  <script src="js/net-config.js?v=30"></script>
+  <script src="js/net.js?v=30"></script>
+  <script src="js/account.js?v=30"></script>
+  <script src="js/main.js?v=30"></script>
 </body>
 </html>

@@ -19,6 +19,22 @@
           ".write": "auth != null && $other !== 'players' && $other !== 'created' && (data.parent().child('players/host').val() === auth.uid || data.parent().child('players/guest').val() === auth.uid)"
         }
       }
+    },
+    "users": {
+      "$uid": {
+        "public": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "records": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "prizes": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
     }
   }
 }

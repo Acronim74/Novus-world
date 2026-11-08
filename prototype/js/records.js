@@ -38,6 +38,7 @@ function recordGame(winner, score) {
   });
   saveRecords(games);
   renderRecords();
+  if (typeof onGamesChanged === 'function') onGamesChanged(games);
 }
 
 function forgetGame(id) {
@@ -186,6 +187,7 @@ document.getElementById('btnRecordsReset').addEventListener('click', () => {
   if (!loadRecords().length) return;
   if (!confirm('Удалить всю статистику партий? Это нельзя отменить.')) return;
   saveRecords([]);
+  if (typeof resetAccountProgress === 'function') resetAccountProgress();
   renderRecords();
 });
 window.addEventListener('keydown', e => {

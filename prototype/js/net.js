@@ -64,6 +64,11 @@ const firebaseBackend = {
     }
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     const auth = firebase.auth();
+    try {
+      await auth.getRedirectResult();
+    } catch (err) {
+      window._authRedirectError = err;
+    }
     const known = await new Promise(resolve => {
       const off = auth.onAuthStateChanged(u => {
         off();
@@ -72,6 +77,11 @@ const firebaseBackend = {
     });
     const user = known || (await auth.signInAnonymously()).user;
     this.db = firebase.database();
+    auth.onAuthStateChanged(u => {
+      if (!u) return;
+      net.uid = u.uid;
+      if (typeof onAccountAuth === 'function') onAccountAuth(u);
+    });
     return user.uid;
   },
   async get(path) {
