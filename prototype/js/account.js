@@ -1,6 +1,6 @@
 'use strict';
 
-// ===== Кабинет: вход (Google или почта), облачная статистика и призы =====
+// ===== Кабинет: карточка игрока, партии, призы, вход (Google или почта) =====
 const PRIZES_KEY = 'novus.prizes.v1';
 const PRIZES = [
   { id: 'first', ico: '🏆', name: 'Первая победа', hint: 'Выиграйте любой сет' },
@@ -19,6 +19,7 @@ const account = {
   busy: false,
   error: '',
   notice: '',
+  tab: 'player',
 };
 
 function accountSignedIn() {
@@ -43,8 +44,12 @@ function savePrizes(prizes) {
   }
 }
 
+function rankedGames(games) {
+  return games.filter(g => g.mode !== 'hotseat');
+}
+
 function prizeUnlocked(games, id) {
-  const ranked = games.filter(g => g.mode !== 'hotseat');
+  const ranked = rankedGames(games);
   if (id === 'first') return ranked.some(g => gameResult(g) === 'win');
   if (id === 'online') return games.some(g => g.mode === 'online' && gameResult(g) === 'win');
   if (id === 'amateur') return games.some(g => g.mode === 'ai' && g.level >= 2 && gameResult(g) === 'win');
@@ -54,6 +59,26 @@ function prizeUnlocked(games, id) {
   if (id === 'games50') return ranked.length >= 50;
   if (id === 'clean') return ranked.some(g => gameResult(g) === 'win' && g.score[mySeat(g)] === 8 && g.score[1 - mySeat(g)] === 0);
   return false;
+}
+
+function playerRank(games) {
+  const ranked = rankedGames(games);
+  if (prizeUnlocked(games, 'master')) return { name: 'Мастер', cls: 'gold' };
+  if (ranked.length >= 50) return { name: 'Ветеран', cls: 'gold' };
+  if (prizeUnlocked(games, 'amateur')) return { name: 'Любитель', cls: 'green' };
+  if (prizeUnlocked(games, 'first')) return { name: 'Игрок', cls: 'green' };
+  if (ranked.length) return { name: 'Новичок', cls: '' };
+  return { name: 'Новичок', cls: '' };
+}
+
+function playerInitials() {
+  const n = (myName() || account.user?.displayName || '').trim();
+  if (!n) return 'Н';
+  const parts = n.split(/\s+/);
+  if (parts.length >= 2 && parts[0][0] && parts[1][0]) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return n.slice(0, 2).toUpperCase();
 }
 
 function mergePrizes(a, b) {
@@ -164,6 +189,7 @@ function onGamesChanged(games) {
 }
 
 async function onAccountAuth(user) {
+  const wasGuest = !accountSignedIn();
   account.user = user || null;
   account.prizes = loadPrizes();
   if (accountSignedIn()) {
@@ -176,6 +202,7 @@ async function onAccountAuth(user) {
       account.error = authMessage(e);
     }
     account.notice = '';
+    if (wasGuest && account.tab === 'auth') account.tab = 'player';
   }
   renderAccount();
   renderRecords();
@@ -184,11 +211,13 @@ async function onAccountAuth(user) {
 async function withAccount(action) {
   if (new URLSearchParams(location.search).get('net') === 'local') {
     account.error = 'Кабинет работает с облаком. Откройте игру без ?net=local.';
+    account.tab = 'auth';
     renderAccount();
     return;
   }
   if (net.code) {
     account.error = 'Сначала выйдите из комнаты — вход меняет аккаунт.';
+    account.tab = 'auth';
     renderAccount();
     return;
   }
@@ -216,6 +245,7 @@ async function signInGoogle() {
   const blocked = accountBlocked();
   if (blocked) {
     account.error = blocked;
+    account.tab = 'auth';
     renderAccount();
     return;
   }
@@ -224,6 +254,7 @@ async function signInGoogle() {
   // Окно Google нужно открыть сразу по нажатию. Если сначала ждать сеть, телефон блокирует вход.
   if (!window.firebase?.auth) {
     account.notice = 'Подключаемся к серверу… нажмите «Войти через Google» ещё раз.';
+    account.tab = 'auth';
     renderAccount();
     try {
       await netBackend();
@@ -250,6 +281,7 @@ async function signInGoogle() {
     } else {
       account.error = authMessage(e);
     }
+    account.tab = 'auth';
     renderAccount();
   }
 }
@@ -259,6 +291,7 @@ async function signInEmail(create) {
   const password = document.getElementById('accPass')?.value || '';
   if (!email || !password) {
     account.error = 'Введите почту и пароль.';
+    account.tab = 'auth';
     renderAccount();
     return;
   }
@@ -282,6 +315,7 @@ async function signOutAccount() {
     await firebase.auth().signOut();
     await firebase.auth().signInAnonymously();
     account.notice = 'Вы вышли. Статистика на этом устройстве осталась, в облаке — на аккаунте.';
+    account.tab = 'player';
   });
 }
 
@@ -302,6 +336,7 @@ async function deleteAccount() {
   if (!accountSignedIn()) return;
   if (net.code) {
     account.error = 'Сначала выйдите из комнаты.';
+    account.tab = 'auth';
     renderAccount();
     return;
   }
@@ -320,6 +355,7 @@ async function deleteAccount() {
     }
     await firebase.auth().signInAnonymously();
     account.notice = 'Аккаунт удалён. На этом устройстве можно играть как гость.';
+    account.tab = 'player';
   });
 }
 
@@ -331,52 +367,134 @@ function accountStatus() {
   return `Вход: ${mail}. На другом устройстве войдите тем же Google или той же почтой — статистика и призы подтянутся.`;
 }
 
-function renderAccount() {
-  const btn = document.getElementById('btnAccount');
-  if (btn) {
-    btn.textContent = accountSignedIn()
-      ? `👤 ${myName() || account.user.displayName || 'Кабинет'}`
-      : '👤 Войти — статистика на всех устройствах';
-  }
-  const note = document.getElementById('recordsCloudNote');
-  if (note) {
-    note.textContent = accountSignedIn()
-      ? 'Сохраняется в облаке: откройте кабинет на другом телефоне или компьютере — партии и призы будут теми же.'
-      : 'Пока только в этом браузере. Войдите в кабинет, чтобы переносить статистику и призы на другие устройства.';
-  }
+function prizesHtml() {
+  return PRIZES.map(p => {
+    const got = account.prizes[p.id];
+    const when = got?.at ? formatWhen(got.at) : '';
+    return `<div class="prize${got ? '' : ' off'}" title="${escapeHtml(p.hint)}">` +
+      `<div class="ico">${p.ico}</div><div class="name">${escapeHtml(p.name)}</div>` +
+      `<div class="hint">${got ? `получен${when ? ' · ' + when : ''}` : escapeHtml(p.hint)}</div></div>`;
+  }).join('');
+}
+
+function bindNameField() {
+  const name = document.getElementById('accName');
+  if (!name) return;
+  name.value = myName();
+  name.addEventListener('change', () => {
+    localStorage.setItem(NAME_KEY, name.value.trim());
+    if (net.code && net.backend) net.backend.set(roomPath(`names/${net.uid}`), myName());
+    pushAccountCloud();
+    renderAccount();
+  });
+}
+
+function showCabinetTab() {
+  document.querySelectorAll('#cabTabs button').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.cab === account.tab);
+  });
+  document.querySelectorAll('#account .cab-pane').forEach(pane => {
+    pane.classList.toggle('on', pane.dataset.cab === account.tab);
+  });
+}
+
+function renderCabinetTabs() {
+  const bar = document.getElementById('cabTabs');
+  if (!bar) return;
+  const tabs = [
+    ['player', 'Игрок'],
+    ['games', 'Партии'],
+    ['prizes', 'Призы'],
+    ['auth', accountSignedIn() ? 'Аккаунт' : 'Вход'],
+  ];
+  bar.innerHTML = tabs.map(([id, label]) =>
+    `<button type="button" role="tab" data-cab="${id}" class="${account.tab === id ? 'on' : ''}">${label}</button>`
+  ).join('');
+  bar.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      account.tab = btn.dataset.cab;
+      showCabinetTab();
+    });
+  });
+}
+
+function renderPlayerPane() {
+  const box = document.getElementById('cabPlayer');
+  if (!box) return;
+  const games = loadRecords();
+  const ranked = rankedGames(games);
+  const s = summarize(ranked);
+  const { run, best } = streaks(ranked);
+  const rank = playerRank(games);
+  const got = PRIZES.filter(p => account.prizes[p.id]).length;
+  const photo = account.user?.photoURL
+    ? `<img class="acc-photo" src="${escapeHtml(account.user.photoURL)}" alt="">`
+    : `<div class="acc-photo empty">${escapeHtml(playerInitials())}</div>`;
+  const sync = accountSignedIn()
+    ? '<div class="cab-sync on">В облаке — тот же аккаунт на любом устройстве</div>'
+    : '<div class="cab-sync">Пока только в этом браузере</div>';
+  const guest = accountSignedIn() ? '' :
+    '<button type="button" id="cabGoAuth" class="primary">Войти — перенести на телефон и компьютер</button>';
+  const hot = games.length - ranked.length;
+  const hotNote = hot
+    ? `<div class="tip">Ещё ${hot} ${plural(hot, 'партия', 'партии', 'партий')} вдвоём на одном устройстве — во вкладке «Партии».</div>`
+    : '';
+
+  box.innerHTML =
+    `<div class="cab-card">` +
+    `<div class="cab-id">${photo}<div class="cab-who">` +
+    `<label class="field">Имя в игре<input id="accName" maxlength="20" autocomplete="nickname"></label>` +
+    `<div class="cab-rank ${rank.cls}">${escapeHtml(rank.name)}</div>` +
+    sync +
+    `</div></div>` +
+    `<div class="cab-stats">` +
+    `<div><b>${s.n}</b><span>${plural(s.n, 'партия', 'партии', 'партий')}</span></div>` +
+    `<div><b>${s.win}</b><span>${plural(s.win, 'победа', 'победы', 'побед')}</span></div>` +
+    `<div><b>${percent(s.win, s.win + s.loss)}</b><span>выигр.</span></div>` +
+    `<div title="Лучшая серия: ${best}"><b>${run}</b><span>${best ? `серия · ${best}` : 'серия'}</span></div>` +
+    `</div>` +
+    `<button type="button" id="cabGoPrizes" class="cab-prize-line">Призы <b>${got}</b> из ${PRIZES.length}</button>` +
+    guest + hotNote +
+    `</div>`;
+  bindNameField();
+  document.getElementById('cabGoAuth')?.addEventListener('click', () => {
+    account.tab = 'auth';
+    showCabinetTab();
+  });
+  document.getElementById('cabGoPrizes')?.addEventListener('click', () => {
+    account.tab = 'prizes';
+    showCabinetTab();
+  });
+}
+
+function renderPrizesPane() {
+  const box = document.getElementById('cabPrizes');
+  if (!box) return;
+  const got = PRIZES.filter(p => account.prizes[p.id]).length;
+  box.innerHTML =
+    `<div class="cab-section-head">Получено <b>${got}</b> из ${PRIZES.length}</div>` +
+    '<div class="prizes">' + prizesHtml() + '</div>';
+}
+
+function renderAuthPane() {
   const box = document.getElementById('accountBody');
   if (!box) return;
+  const prevEmail = document.getElementById('accEmail')?.value || '';
   const busy = account.busy ? ' disabled' : '';
   const err = account.error ? `<div class="net-error">${escapeHtml(account.error)}</div>` : '';
   const notice = account.notice ? `<div class="tip">${escapeHtml(account.notice)}</div>` : '';
-  const prizes = PRIZES.map(p => {
-    const got = account.prizes[p.id];
-    return `<div class="prize${got ? '' : ' off'}" title="${escapeHtml(p.hint)}">` +
-      `<div class="ico">${p.ico}</div><div class="name">${escapeHtml(p.name)}</div>` +
-      `<div class="hint">${got ? 'получен' : escapeHtml(p.hint)}</div></div>`;
-  }).join('');
 
   if (accountSignedIn()) {
     const photo = account.user.photoURL
       ? `<img class="acc-photo" src="${escapeHtml(account.user.photoURL)}" alt="">`
-      : '<div class="acc-photo empty">👤</div>';
+      : `<div class="acc-photo empty">${escapeHtml(playerInitials())}</div>`;
     box.innerHTML =
       `<div class="acc-head">${photo}<div>` +
       `<div class="acc-mail">${escapeHtml(account.user.email || account.user.displayName || 'Игрок')}</div>` +
       `<div class="tip">${escapeHtml(accountStatus())}</div></div></div>` +
-      '<label class="field">Имя в игре<input id="accName" maxlength="20" autocomplete="nickname"></label>' +
       notice + err +
-      '<h3>Призы</h3><div class="prizes">' + prizes + '</div>' +
-      `<button id="accOut"${busy}>Выйти из аккаунта</button>` +
-      `<button id="accDelete" class="danger"${busy}>Удалить аккаунт</button>`;
-    const name = document.getElementById('accName');
-    name.value = myName();
-    name.addEventListener('change', () => {
-      localStorage.setItem(NAME_KEY, name.value.trim());
-      if (net.code && net.backend) net.backend.set(roomPath(`names/${net.uid}`), myName());
-      pushAccountCloud();
-      renderAccount();
-    });
+      `<button type="button" id="accOut"${busy}>Выйти из аккаунта</button>` +
+      `<button type="button" id="accDelete" class="danger"${busy}>Удалить аккаунт</button>`;
     document.getElementById('accOut').addEventListener('click', signOutAccount);
     document.getElementById('accDelete').addEventListener('click', deleteAccount);
     return;
@@ -393,8 +511,9 @@ function renderAccount() {
     `<button type="submit" id="accEmailIn"${busy}>Войти</button>` +
     `<button type="button" id="accEmailUp" class="primary"${busy}>Создать аккаунт</button>` +
     '</div></form>' +
-    notice + err +
-    '<h3>Призы на этом устройстве</h3><div class="prizes">' + prizes + '</div>';
+    notice + err;
+  const emailEl = document.getElementById('accEmail');
+  if (emailEl) emailEl.value = prevEmail;
   document.getElementById('accGoogle').addEventListener('click', signInGoogle);
   document.getElementById('accEmailForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -403,15 +522,49 @@ function renderAccount() {
   document.getElementById('accEmailUp').addEventListener('click', () => signInEmail(true));
 }
 
-function openAccount() {
+function renderAccount() {
+  const name = myName() || account.user?.displayName || '';
+  const btn = document.getElementById('btnAccount');
+  if (btn) btn.textContent = name ? `👤 ${name}` : '👤 Кабинет';
+  const cab = document.getElementById('btnCabinet');
+  if (cab) {
+    cab.innerHTML = name
+      ? `👤<span class="full"> ${escapeHtml(name)}</span>`
+      : '👤<span class="full"> Кабинет</span>';
+  }
+  const note = document.getElementById('recordsCloudNote');
+  if (note) {
+    note.textContent = accountSignedIn()
+      ? 'Сохраняется в облаке: откройте кабинет на другом телефоне или компьютере — партии и призы будут теми же.'
+      : 'Пока только в этом браузере. Войдите, чтобы переносить статистику и призы на другие устройства.';
+  }
+  renderCabinetTabs();
+  renderPlayerPane();
+  renderPrizesPane();
+  renderAuthPane();
+  renderRecords();
+  showCabinetTab();
+}
+
+function openCabinet(tab) {
+  if (tab) account.tab = tab;
   account.error = '';
   account.prizes = loadPrizes();
   renderAccount();
+  renderRecords();
   document.getElementById('account').classList.remove('closed');
 }
 
-function closeAccount() {
+function closeCabinet() {
   document.getElementById('account').classList.add('closed');
+}
+
+function openAccount() {
+  openCabinet(account.tab || 'player');
+}
+
+function closeAccount() {
+  closeCabinet();
 }
 
 function resetAccountProgress() {
@@ -421,26 +574,32 @@ function resetAccountProgress() {
 }
 
 account.prizes = loadPrizes();
-document.getElementById('btnAccount').addEventListener('click', openAccount);
-document.getElementById('btnAccountClose').addEventListener('click', closeAccount);
+document.getElementById('btnAccount').addEventListener('click', () => openCabinet('player'));
+document.getElementById('btnCabinet')?.addEventListener('click', () => openCabinet('player'));
+document.getElementById('btnAccountClose').addEventListener('click', closeCabinet);
 document.getElementById('account').addEventListener('click', e => {
-  if (e.target.id === 'account') closeAccount();
+  if (e.target.id === 'account') closeCabinet();
 });
-document.getElementById('recordsCloudNote')?.addEventListener('click', openAccount);
+document.getElementById('recordsCloudNote')?.addEventListener('click', () => {
+  if (!accountSignedIn()) openCabinet('auth');
+});
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeCabinet();
+});
 renderAccount();
 
 const openAfterRedirect = localStorage.getItem('novus.authRedirect') || sessionStorage.getItem('novus.openAccount');
 if (openAfterRedirect) {
   localStorage.removeItem('novus.authRedirect');
   sessionStorage.removeItem('novus.openAccount');
-  openAccount();
+  openCabinet('player');
 }
 if (new URLSearchParams(location.search).get('net') !== 'local') {
   netBackend().then(() => {
     if (window._authRedirectError) {
       account.error = authMessage(window._authRedirectError);
       window._authRedirectError = null;
-      openAccount();
+      openCabinet('auth');
       renderAccount();
     }
   }).catch(e => {

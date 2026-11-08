@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=33">
+  <link rel="stylesheet" href="style.css?v=34">
 </head>
 <body>
   <div id="app">
@@ -33,7 +33,7 @@
         <button id="btnReact" class="react">😊<span class="full"> Реакция сопернику</span></button>
         <button id="btnNew"><span class="full">Новая партия</span><span class="short">Новая</span></button>
         <button id="btnLevel">🎯<span class="full"> Сложность и время</span></button>
-        <button id="btnRecords">📊<span class="full"> Статистика</span></button>
+        <button id="btnCabinet">👤<span class="full"> Кабинет</span></button>
         <button id="btnDrawer">⚙<span class="full"> Настройки и журнал</span></button>
       </div>
     </aside>
@@ -217,27 +217,23 @@
     </div>
   </div>
 
-  <div id="records" class="modal closed">
-    <div class="sheet" role="dialog" aria-label="Статистика партий">
-      <div class="drawer-head">
-        <span>Статистика партий</span>
-        <button id="btnRecordsClose" title="Закрыть">✕</button>
-      </div>
-      <div id="recordsBody"></div>
-      <div class="sheet-foot">
-        <span class="note" id="recordsCloudNote">Пока только в этом браузере. Войдите в кабинет, чтобы переносить статистику и призы на другие устройства.</span>
-        <button id="btnRecordsReset">Сбросить</button>
-      </div>
-    </div>
-  </div>
-
   <div id="account" class="modal closed">
-    <div class="sheet" role="dialog" aria-label="Кабинет игрока">
+    <div class="sheet cabinet" role="dialog" aria-label="Кабинет игрока">
       <div class="drawer-head">
-        <span>Кабинет</span>
+        <span>Кабинет игрока</span>
         <button id="btnAccountClose" title="Закрыть">✕</button>
       </div>
-      <div id="accountBody"></div>
+      <div id="cabTabs" class="cab-tabs" role="tablist"></div>
+      <div class="cab-pane on" data-cab="player" id="cabPlayer"></div>
+      <div class="cab-pane" data-cab="games" id="cabGames">
+        <div id="recordsBody"></div>
+        <div class="sheet-foot">
+          <span class="note" id="recordsCloudNote">Пока только в этом браузере. Войдите, чтобы переносить статистику и призы на другие устройства.</span>
+          <button type="button" id="btnRecordsReset">Сбросить</button>
+        </div>
+      </div>
+      <div class="cab-pane" data-cab="prizes" id="cabPrizes"></div>
+      <div class="cab-pane" data-cab="auth" id="accountBody"></div>
     </div>
   </div>
 
@@ -247,8 +243,7 @@
       <button id="btnDrawerClose" title="Закрыть">✕</button>
     </div>
 
-    <button id="btnAccount">👤 Войти — статистика на всех устройствах</button>
-    <button id="btnRecordsDrawer">📊 Статистика партий</button>
+    <button id="btnAccount">👤 Кабинет</button>
     <button id="btnInstall" hidden>📲 Установить как приложение</button>
     <div id="installNote" class="note" hidden></div>
     <details class="block">
@@ -303,20 +298,20 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=33"></script>
-  <script src="js/state.js?v=33"></script>
-  <script src="js/zones.js?v=33"></script>
-  <script src="js/shot.js?v=33"></script>
-  <script src="js/physics.js?v=33"></script>
-  <script src="js/referee.js?v=33"></script>
-  <script src="js/ai.js?v=33"></script>
-  <script src="js/records.js?v=33"></script>
-  <script src="js/render.js?v=33"></script>
-  <script src="js/input.js?v=33"></script>
-  <script src="js/ui.js?v=33"></script>
-  <script src="js/net-config.js?v=33"></script>
-  <script src="js/net.js?v=33"></script>
-  <script src="js/account.js?v=33"></script>
-  <script src="js/main.js?v=33"></script>
+  <script src="js/config.js?v=34"></script>
+  <script src="js/state.js?v=34"></script>
+  <script src="js/zones.js?v=34"></script>
+  <script src="js/shot.js?v=34"></script>
+  <script src="js/physics.js?v=34"></script>
+  <script src="js/referee.js?v=34"></script>
+  <script src="js/ai.js?v=34"></script>
+  <script src="js/records.js?v=34"></script>
+  <script src="js/render.js?v=34"></script>
+  <script src="js/input.js?v=34"></script>
+  <script src="js/ui.js?v=34"></script>
+  <script src="js/net-config.js?v=34"></script>
+  <script src="js/net.js?v=34"></script>
+  <script src="js/account.js?v=34"></script>
+  <script src="js/main.js?v=34"></script>
 </body>
 </html>

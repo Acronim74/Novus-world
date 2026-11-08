@@ -166,30 +166,25 @@ function renderRecords() {
   box.innerHTML = html;
 }
 
-const recordsDialog = document.getElementById('records');
-
 function openRecords() {
+  if (typeof openCabinet === 'function') {
+    openCabinet('games');
+    return;
+  }
   renderRecords();
-  recordsDialog.classList.remove('closed');
 }
 
 function closeRecords() {
-  recordsDialog.classList.add('closed');
+  if (typeof closeCabinet === 'function') closeCabinet();
 }
 
-document.getElementById('btnRecords').addEventListener('click', openRecords);
-document.getElementById('btnRecordsDrawer').addEventListener('click', openRecords);
-document.getElementById('btnRecordsClose').addEventListener('click', closeRecords);
-recordsDialog.addEventListener('click', e => {
-  if (e.target === recordsDialog) closeRecords();
-});
-document.getElementById('btnRecordsReset').addEventListener('click', () => {
+document.getElementById('btnRecordsReset')?.addEventListener('click', () => {
   if (!loadRecords().length) return;
-  if (!confirm('Удалить всю статистику партий? Это нельзя отменить.')) return;
+  const extra = typeof accountSignedIn === 'function' && accountSignedIn()
+    ? '\n\nСтатистика сотрётся и в облаке.'
+    : '';
+  if (!confirm('Удалить всю статистику партий? Это нельзя отменить.' + extra)) return;
   saveRecords([]);
   if (typeof resetAccountProgress === 'function') resetAccountProgress();
   renderRecords();
-});
-window.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeRecords();
 });
