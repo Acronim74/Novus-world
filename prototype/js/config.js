@@ -52,10 +52,10 @@ const TABLE_STATES = {
 
 // Подсказка траектории: сколько пути показать и сколько отскоков от бортов.
 const HINT_MODES = {
-  off: { note: 'Без подсказки — как за настоящим столом.' },
-  short: { len: 220, bounces: 0, target: false, note: 'Короткий отрезок от шайбы — только направление.' },
-  mid: { len: Infinity, bounces: 0, target: false, note: 'Линия до первого касания пешки или борта.' },
-  full: { len: Infinity, bounces: 2, target: true, note: 'Полная линия: отскоки от бортов и куда пойдёт пешка.' },
+  off: { note: 'Без подсказки — как за настоящим столом.', xpMul: 1.5 },
+  short: { len: 220, bounces: 0, target: false, note: 'Короткий отрезок от шайбы — только направление.', xpMul: 1 },
+  mid: { len: Infinity, bounces: 0, target: false, note: 'Линия до первого касания пешки или борта.', xpMul: 0.5 },
+  full: { len: Infinity, bounces: 2, target: true, note: 'Полная линия: отскоки от бортов и куда пойдёт пешка.', xpMul: 0.2 },
 };
 
 const cfg = {

@@ -114,6 +114,25 @@ function playerLevel(games) {
   return levelFromXp(totalXp(games));
 }
 
+function hintXpMul(hint) {
+  const mul = HINT_MODES[hint]?.xpMul;
+  return mul == null ? 1 : mul;
+}
+
+function scaleHintXp(base, hint, win) {
+  const n = Math.round(Number(base) * hintXpMul(hint));
+  if (win) return Math.max(1, n);
+  return Math.max(0, n);
+}
+
+function aiXpPreview(level, hint) {
+  const pack = AI_LEVELS[level] || AI_LEVELS[2];
+  return {
+    win: scaleHintXp(pack.xpWin, hint, true),
+    loss: scaleHintXp(pack.xpLoss, hint, false),
+  };
+}
+
 function xpForGame(g) {
   if (!g || g.mode === 'hotseat') return 0;
   const result = gameResult(g);
@@ -123,8 +142,9 @@ function xpForGame(g) {
   }
   if (g.mode === 'ai') {
     const pack = AI_LEVELS[g.level] || AI_LEVELS[2];
-    if (result === 'win') return pack.xpWin;
-    if (result === 'loss') return pack.xpLoss;
+    const hint = g.hint || 'short';
+    if (result === 'win') return scaleHintXp(pack.xpWin, hint, true);
+    if (result === 'loss') return scaleHintXp(pack.xpLoss, hint, false);
     return 1;
   }
   return 0;

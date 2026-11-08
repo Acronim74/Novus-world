@@ -30,6 +30,7 @@ function recordGame(winner, score) {
     at: Date.now(),
     mode: net.active ? 'online' : cfg.mode,
     level: cfg.level,
+    ...(!net.active && cfg.mode === 'ai' ? { hint: cfg.hintLen } : {}),
     ...(net.active ? {
       seat: net.seat,
       peer: net.peerName || '',

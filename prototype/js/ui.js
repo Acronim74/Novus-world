@@ -194,7 +194,13 @@ function refreshControls() {
   for (const id of ['groupTable', 'groupHint', 'groupTime']) document.getElementById(id).classList.toggle('locked', net.active);
   for (const id of ['optCircleDark', 'optFree', 'optZoneReturn']) document.getElementById(id).disabled = net.active;
   document.getElementById('tableNote').textContent = TABLE_STATES[cfg.table].note;
-  document.getElementById('hintNote').textContent = HINT_MODES[cfg.hintLen].note;
+  const hint = HINT_MODES[cfg.hintLen];
+  let hintNote = hint.note;
+  if (cfg.mode === 'ai' && !net.active) {
+    if (hint.xpMul < 1) hintNote += ' Награда за партию с компьютером меньше.';
+    else if (hint.xpMul > 1) hintNote += ' Награда за партию с компьютером больше.';
+  }
+  document.getElementById('hintNote').textContent = hintNote;
   document.getElementById('timeNote').textContent = cfg.shotTime
     ? `Не успели ударить за ${cfg.shotTime} с — штрафная пешка и ход переходит (п. 17.1.15).`
     : 'Думайте над ударом сколько угодно.';
@@ -203,10 +209,18 @@ function refreshControls() {
     : '';
   const xpNote = document.getElementById('aiXpNote');
   if (xpNote) {
-    const pack = AI_LEVELS[cfg.level];
-    xpNote.textContent = cfg.mode === 'ai'
-      ? `Победа: ${pack.xpWin} очков, поражение: ${pack.xpLoss}. Очки копятся к уровню и открывают стол, кии и цвета фишек.`
-      : 'Вдвоём на одном устройстве очки не начисляются.';
+    if (cfg.mode !== 'ai') {
+      xpNote.textContent = 'Вдвоём на одном устройстве очки не начисляются.';
+    } else if (typeof aiXpPreview === 'function') {
+      const prev = aiXpPreview(cfg.level, cfg.hintLen);
+      const how = hint.xpMul < 1 ? 'Подсказка снижает награду.'
+        : hint.xpMul > 1 ? 'Без подсказки награда выше.'
+          : 'Короткая подсказка — обычная награда.';
+      xpNote.textContent = `Победа: ${prev.win} ${plural(prev.win, 'очко', 'очка', 'очков')}, поражение: ${prev.loss}. ${how}`;
+    } else {
+      const pack = AI_LEVELS[cfg.level];
+      xpNote.textContent = `Победа: ${pack.xpWin} очков, поражение: ${pack.xpLoss}.`;
+    }
   }
 }
 
