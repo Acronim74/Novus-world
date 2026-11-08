@@ -397,7 +397,7 @@ function netShotStarted(seed) {
 function serializeState() {
   return {
     bodies: bodies.map(b => [b.x, b.y, b.state]),
-    current, debt, stats, lastShot, winnerText, firstShooter, lostTurn, setWinner,
+    current, debt, stats, lastShot, winnerText, firstShooter, lostTurn, darkMisses, setWinner,
     over: phase === 'over',
   };
 }
@@ -466,6 +466,7 @@ function applyState(st) {
   winnerText = d.winnerText;
   if (d.firstShooter != null) firstShooter = d.firstShooter;
   if (d.lostTurn) lostTurn = d.lostTurn;
+  if (d.darkMisses) darkMisses = d.darkMisses;
   shot = null;
   net.peerAiming = false;
   if (lastShot) {

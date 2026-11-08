@@ -9,11 +9,22 @@ function yAtDepth(p, d) {
   return PLAYERS[p].rail === 'bottom' ? FIELD - d : d;
 }
 
+function zoneMargin(b) {
+  return b.hole + LINE_W / 2;
+}
+
+function inBoardZone(p, b, y = b.y) {
+  return depthFromOwnRail(p, y) < ZONE - zoneMargin(b);
+}
+
+function inCircle(b, x = b.x, y = b.y) {
+  return Math.hypot(x - FIELD / 2, y - FIELD / 2) < CIRCLE_R - zoneMargin(b);
+}
+
 function isDark(b) {
   if (b.kind !== 'pawn' || b.state !== 'table') return false;
-  const margin = b.hole + LINE_W / 2;
-  if (depthFromOwnRail(b.owner, b.y) < ZONE - margin) return true;
-  return cfg.circleDark && Math.hypot(b.x - FIELD / 2, b.y - FIELD / 2) < CIRCLE_R - margin;
+  if (inBoardZone(b.owner, b)) return true;
+  return cfg.circleDark && inCircle(b);
 }
 
 function isHanging(b) {

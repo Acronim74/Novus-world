@@ -3,15 +3,33 @@
 // ===== Удар =====
 function makeShotRecord(p) {
   const own = bodies.filter(b => b.kind === 'pawn' && b.owner === p && b.state === 'table');
+  const startPos = new Map();
+  for (const b of bodies) {
+    if (b.kind !== 'pawn' || b.state !== 'table') continue;
+    startPos.set(b, {
+      x: b.x,
+      y: b.y,
+      dark: isDark(b),
+      inOwnZone: inBoardZone(p, b),
+      inCircle: inCircle(b),
+      hanging: isHanging(b),
+    });
+  }
   return {
     player: p,
     startX: striker.x,
     events: [],
     firstContact: null,
+    firstContacts: [],
     railsBeforeFirst: new Set(),
     lightAtStart: own.filter(b => !isDark(b)).length,
     darkAtStart: new Set(own.filter(isDark)),
-    inCircleAtStart: new Set(own.filter(b => Math.hypot(b.x - FIELD / 2, b.y - FIELD / 2) < CIRCLE_R)),
+    inCircleAtStart: new Set(own.filter(b => inCircle(b))),
+    startPos,
+    touched: new Set(),
+    strikerTouched: [],
+    crossedIntoField: false,
+    returnedPastZone: false,
   };
 }
 
@@ -39,6 +57,7 @@ function takeSnapshot() {
     lastShot,
     firstShooter,
     lostTurn: [...lostTurn],
+    darkMisses: [...darkMisses],
   };
 }
 
@@ -53,6 +72,7 @@ function restoreSnapshot() {
   lastShot = snapshot.lastShot;
   firstShooter = snapshot.firstShooter;
   lostTurn = [...snapshot.lostTurn];
+  darkMisses = [...(snapshot.darkMisses || [0, 0])];
   toast = null;
   winnerText = null;
   setWinner = undefined;

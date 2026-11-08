@@ -150,7 +150,9 @@ function scoreOutcome(p) {
   const j = judgeShot();
   let s = j.ownIn.length * 120 - j.oppIn.length * 80 - j.pawnsOut.length * 40;
   if (j.ownIn.length > 1) s += 50 * (j.ownIn.length - 1);
+  if (j.loseSet) s -= 800;
   if (j.foul) s -= 150;
+  if (j.zoneReturn) s -= 40;
   if (j.keepTurn) s += 50 + positionValue(p);
   else s -= positionValue(1 - p);
   return s;

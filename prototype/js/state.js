@@ -17,6 +17,7 @@ let gameStartedAt = 0;
 let turnDeadline = 0;
 let firstShooter = 0;
 let lostTurn = [false, false];
+let darkMisses = [0, 0];
 let setWinner = undefined;
 
 function newStats() {
@@ -53,6 +54,7 @@ function newGame() {
   winnerText = null;
   firstShooter = 0;
   lostTurn = [false, false];
+  darkMisses = [0, 0];
   setWinner = undefined;
   snapshot = null;
   stats = [newStats(), newStats()];

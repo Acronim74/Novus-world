@@ -29,6 +29,7 @@ function physicsStep(dt) {
     for (const b of live) if (b.state === 'table') collideRails(b);
   }
   for (const b of live) if (b.state === 'table') checkPockets(b, dt);
+  trackStrikerReturn();
 }
 
 function decel(b) {
@@ -233,10 +234,35 @@ function markOut(b, side) {
   shot?.events.push({ type: 'out', body: b, side });
 }
 
+function pawnsTouchingStriker() {
+  const extra = 0.8;
+  return bodies.filter(b => b.kind === 'pawn' && b.state === 'table' &&
+    Math.hypot(b.x - striker.x, b.y - striker.y) <= b.r + striker.r + extra);
+}
+
 function noteContact(a, b, vrel) {
-  if (!shot || vrel < 5) return;
-  if (!shot.firstContact && (a === striker || b === striker)) {
-    shot.firstContact = a === striker ? b : a;
+  if (!shot) return;
+  if (a.kind === 'pawn') shot.touched.add(a);
+  if (b.kind === 'pawn') shot.touched.add(b);
+  const pawn = a === striker ? b : b === striker ? a : null;
+  if (pawn && pawn.kind === 'pawn' && !shot.strikerTouched.includes(pawn)) {
+    shot.strikerTouched.push(pawn);
+  }
+  if (vrel < 5) return;
+  if (!shot.firstContact && pawn && pawn.kind === 'pawn') {
+    shot.firstContact = pawn;
+    shot.firstContacts = pawnsTouchingStriker();
+  }
+}
+
+// п. 12.15, 18.1.5: без своих тёмных шайба на обратном ходу не должна уйти за линию своей зоны.
+function trackStrikerReturn() {
+  if (!shot || striker.state !== 'table') return;
+  const d = depthFromOwnRail(shot.player, striker.y);
+  if (d > ZONE) shot.crossedIntoField = true;
+  if (shot.darkAtStart.size === 0 && shot.crossedIntoField &&
+      d < ZONE - STRIKER_SPEC.hole - LINE_W / 2) {
+    shot.returnedPastZone = true;
   }
 }
 
