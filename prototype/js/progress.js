@@ -173,15 +173,14 @@ function isUnlocked(item, level) {
   return item.level <= level;
 }
 
-function tableSkin() {
-  if (skinCache) return skinCache;
-  const level = playerLevel().level;
+function skinFromIds(ids, level) {
+  const src = { ...LOADOUT_DEFAULT, ...(ids || {}) };
   const pick = slot => {
-    const item = loadoutItem(slot);
     const spec = COSMETIC_SLOTS.find(s => s.key === slot);
+    const item = cosmeticById(spec.list, src[slot]);
     return isUnlocked(item, level) ? item : COSMETICS[spec.list][0];
   };
-  skinCache = {
+  return {
     rail: pick('rail'),
     felt: pick('felt'),
     deco: pick('deco'),
@@ -189,6 +188,33 @@ function tableSkin() {
     pawns: pick('pawns'),
     striker: pick('striker'),
   };
+}
+
+function exportTableSkin() {
+  const skin = skinFromIds(progress.loadout, playerLevel().level);
+  const ids = {};
+  for (const spec of COSMETIC_SLOTS) ids[spec.key] = skin[spec.key].id;
+  return ids;
+}
+
+function tableSkinCaption(ids) {
+  const skin = skinFromIds(ids || exportTableSkin(), 99);
+  return `${skin.rail.name}, ${skin.felt.name}, ${skin.deco.name}`;
+}
+
+function roomTableSkinIds() {
+  if (typeof net === 'undefined' || !net.code || net.role === 'host' || !net.rules?.skin) return null;
+  return net.rules.skin;
+}
+
+function tableSkin() {
+  const remote = roomTableSkinIds();
+  const level = remote ? 99 : playerLevel().level;
+  const ids = remote || progress.loadout;
+  const key = (remote ? 'r' : 'l') + ':' + level + ':' + COSMETIC_SLOTS.map(s => ids[s.key] || '').join(',');
+  if (skinCache && skinCache._key === key) return skinCache;
+  skinCache = skinFromIds(ids, level);
+  skinCache._key = key;
   return skinCache;
 }
 
@@ -244,6 +270,7 @@ function resetLoadout() {
   progress.loadout = { ...LOADOUT_DEFAULT };
   saveProgress();
   applyLoadout();
+  if (typeof publishRoomTableSkin === 'function') publishRoomTableSkin();
 }
 
 function setLoadout(slot, id) {
@@ -255,6 +282,7 @@ function setLoadout(slot, id) {
   saveProgress();
   applyLoadout();
   if (typeof pushAccountCloud === 'function') pushAccountCloud();
+  if (typeof publishRoomTableSkin === 'function') publishRoomTableSkin();
   if (typeof renderAccount === 'function') renderAccount();
 }
 
@@ -308,8 +336,8 @@ function renderTablePane() {
   const box = document.getElementById('cabTable');
   if (!box) return;
   const lv = playerLevel();
-  const skin = tableSkin();
-  let html = `<p class="tip">Очки за партии поднимают уровень. На каждом уровне открываются борта, поле, кий, пешки и биток — стол ваш, его видите только вы.</p>`;
+  const skin = skinFromIds(progress.loadout, lv.level);
+  let html = `<p class="tip">Очки за партии поднимают уровень. На каждом уровне открываются борта, поле, кий, пешки и биток. С компьютером и вдвоём на одном устройстве стол видите только вы. В партии по сети оформление задаёт тот, кто создал комнату — оба игрока видят его стол.</p>`;
   html += `<div class="cab-section-head">Уровень <b>${lv.level}</b> · ${lv.into} / ${lv.need} до следующего</div>`;
   html += `<div class="xp-bar"><div style="width:${Math.round(lv.into / lv.need * 100)}%"></div></div>`;
   for (const spec of COSMETIC_SLOTS) {

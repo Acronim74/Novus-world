@@ -4,7 +4,7 @@
 // Комната в базе: rooms/{код}
 //   players {host, guest}  — uid игроков
 //   names/{uid}, presence/{uid}
-//   rules                  — условия игры, их выбирает создатель комнаты
+//   rules                  — условия игры и оформление стола, их выбирает создатель комнаты
 //   game  {n, red, rules}  — номер партии в комнате, uid того, кто играет красными, и условия этой партии
 //   shot  {n, seq, by, d}  — последний удар: где стояла шайба, направление, сила, зерно физики
 //   state {n, seq, d}      — позиция после удара, её считает и присылает тот, кто бил
@@ -304,6 +304,7 @@ function enterRoom(code, role) {
   }));
   net.unsubs.push(db.on(roomPath('rules'), rules => {
     net.rules = rules;
+    if (typeof applyLoadout === 'function') applyLoadout();
     renderOnline();
   }));
   net.unsubs.push(db.on(roomPath('match'), onMatch));
@@ -733,15 +734,17 @@ let rulesDraft = null;
 let rulesMode = 'create';
 
 function rulesLines(r) {
+  const skin = typeof tableSkinCaption === 'function' ? tableSkinCaption(r.skin) : '';
   return [
     `Очки за победу: ${typeof clampStake === 'function' ? clampStake(r.stake) : (Number(r.stake) || 20)}`,
     `Время на удар: ${Number(r.shotTime) ? `${r.shotTime} с` : 'без лимита'}`,
     `Натирка стола: ${RULE_NAMES.table[r.table] || r.table}`,
+    skin ? `Оформление стола: ${skin}` : '',
     `Помощь при прицеливании: ${RULE_NAMES.hintLen[r.hintLen] || r.hintLen}`,
     `Центральный круг — ${r.circleDark !== false ? 'тёмное поле' : 'светлое поле'}`,
     r.freePlace ? 'Шайбу можно ставить на всей своей половине' : 'Шайба ставится в бортовой зоне',
     r.zoneReturn ? 'Шайба не должна возвращаться в свою зону (п. 18.1.5)' : 'Обратный ход шайбы в свою зону разрешён',
-  ];
+  ].filter(Boolean);
 }
 
 function renderRulesDraft() {
@@ -754,12 +757,23 @@ function renderRulesDraft() {
 function openRulesDialog(mode) {
   rulesMode = mode;
   rulesDraft = { ...(mode === 'edit' && net.rules ? net.rules : currentRules()) };
+  if (typeof exportTableSkin === 'function') rulesDraft.skin = exportTableSkin();
   document.getElementById('btnRulesOk').textContent = mode === 'edit' ? 'Сохранить' : 'Создать комнату';
-  document.getElementById('rulesNote').textContent = mode === 'edit' && net.active
-    ? 'Новые условия начнут действовать со следующей партии.'
+  const skin = typeof tableSkinCaption === 'function' ? tableSkinCaption(rulesDraft.skin) : '';
+  const next = mode === 'edit' && net.active
+    ? 'Новые условия начнут действовать со следующей партии. '
     : '';
+  document.getElementById('rulesNote').textContent =
+    next + (skin ? `Оформление стола — из вашего кабинета: ${skin}. Соперник увидит этот стол.` : '');
   renderRulesDraft();
   rulesDialog.classList.remove('closed');
+}
+
+function publishRoomTableSkin() {
+  if (net.role !== 'host' || !net.code || !net.backend || typeof exportTableSkin !== 'function') return;
+  const skin = exportTableSkin();
+  if (net.rules) net.rules.skin = skin;
+  net.backend.set(roomPath('rules/skin'), skin);
 }
 
 for (const seg of rulesDialog.querySelectorAll('.seg[data-key]')) {
@@ -780,6 +794,7 @@ for (const box of rulesDialog.querySelectorAll('input[data-key]')) {
 document.getElementById('btnRulesOk').addEventListener('click', () => {
   rulesDialog.classList.add('closed');
   const rules = { ...rulesDraft };
+  if (typeof exportTableSkin === 'function') rules.skin = exportTableSkin();
   if (rulesMode === 'edit') net.backend.set(roomPath('rules'), rules);
   else runOnline(() => createRoom(rules));
 });

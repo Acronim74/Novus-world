@@ -234,6 +234,7 @@ function currentRules() {
     freePlace: cfg.freePlace,
     zoneReturn: cfg.zoneReturn,
     stake: typeof clampStake === 'function' ? clampStake(cfg.stake) : (Number(cfg.stake) || 20),
+    skin: typeof exportTableSkin === 'function' ? exportTableSkin() : undefined,
   };
 }
 
@@ -245,6 +246,7 @@ function applyRules(r) {
   cfg.freePlace = Boolean(r.freePlace);
   cfg.zoneReturn = Boolean(r.zoneReturn);
   cfg.stake = typeof clampStake === 'function' ? clampStake(r.stake) : (Number(r.stake) || 20);
+  if (typeof applyLoadout === 'function') applyLoadout();
   document.getElementById('optCircleDark').checked = cfg.circleDark;
   document.getElementById('optFree').checked = cfg.freePlace;
   document.getElementById('optZoneReturn').checked = cfg.zoneReturn;
