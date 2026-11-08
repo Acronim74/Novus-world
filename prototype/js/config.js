@@ -87,4 +87,5 @@ const cfg = {
   zoneReturn: false,
   flip: false,
   slow: false,
+  stake: 20,
 };

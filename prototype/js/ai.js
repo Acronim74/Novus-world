@@ -5,13 +5,13 @@
 // и бьёт выбранный удар с ошибкой прицела и силы, зависящей от уровня.
 const AI_PLAYER = 1;
 const AI_LEVELS = {
-  1: { name: 'Новичок', spots: 1, speeds: [1.6], banks: false, blind: 0.4, pick: 5,
+  1: { name: 'Новичок', xpWin: 10, xpLoss: 2, spots: 1, speeds: [1.6], banks: false, blind: 0.4, pick: 5,
        robustTop: 0, robustRuns: 0, angleSigma: 2.2, powerSigma: 0.18, minThink: 500,
        breakPowers: [0.7] },
-  2: { name: 'Любитель', spots: 3, speeds: [1.4, 2.0, 3.2], banks: 'dark', blind: 0, pick: 1,
+  2: { name: 'Любитель', xpWin: 20, xpLoss: 4, spots: 3, speeds: [1.4, 2.0, 3.2], banks: 'dark', blind: 0, pick: 1,
        robustTop: 6, robustRuns: 3, angleSigma: 0.4, powerSigma: 0.04, minThink: 800,
        breakPowers: [0.8, 0.95] },
-  3: { name: 'Мастер', spots: 4, speeds: [1.2, 1.8, 2.8, 4.0], banks: true, blind: 0, pick: 1,
+  3: { name: 'Мастер', xpWin: 40, xpLoss: 6, spots: 4, speeds: [1.2, 1.8, 2.8, 4.0], banks: true, blind: 0, pick: 1,
        robustTop: 8, robustRuns: 5, angleSigma: 0.12, powerSigma: 0.018, minThink: 1000,
        breakPowers: [0.72, 0.88, 1.0] },
 };

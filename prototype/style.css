@@ -535,12 +535,12 @@ table.rec tr.total td { font-weight: 700; border-bottom: none; }
 .cab-tabs button {
   flex: 1;
   min-height: 40px;
-  padding: 8px 4px;
+  padding: 8px 2px;
   border: none;
   border-radius: 6px;
   background: transparent;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .cab-tabs button.on {
@@ -598,6 +598,55 @@ table.rec tr.total td { font-weight: 700; border-bottom: none; }
 
 .cab-rank.green { color: #a5d6a7; }
 .cab-rank.gold { color: #ffd54f; }
+.cab-rank-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #8fa0aa;
+}
+
+.xp { margin-top: 12px; }
+.xp-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #8fa0aa;
+}
+.xp-bar {
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 99px;
+  background: #1d2327;
+  overflow: hidden;
+}
+.xp-bar > div {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #3f8a4e, #ffd54f);
+}
+
+.skins {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.skin {
+  padding: 8px;
+  border-radius: 10px;
+  background: #1f2529;
+  text-align: center;
+  border: 2px solid transparent;
+}
+.skin.on { border-color: #ffd54f; }
+.skin.locked { opacity: 0.42; filter: grayscale(0.4); }
+.skin .sw {
+  height: 28px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.skin .name { font-size: 13px; font-weight: 600; }
+.skin .need { margin-top: 2px; font-size: 11px; color: #8fa0aa; }
 
 .cab-sync {
   margin-top: 4px;

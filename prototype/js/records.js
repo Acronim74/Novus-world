@@ -25,17 +25,23 @@ function saveRecords(games) {
 // winner: 0, 1 или null (обе стороны забили все пешки); score — забито пешек каждой стороной.
 function recordGame(winner, score) {
   const games = loadRecords().filter(g => g.id !== gameId);
-  games.push({
+  const game = {
     id: gameId,
     at: Date.now(),
     mode: net.active ? 'online' : cfg.mode,
     level: cfg.level,
-    ...(net.active ? { seat: net.seat, peer: net.peerName || '' } : {}),
+    ...(net.active ? {
+      seat: net.seat,
+      peer: net.peerName || '',
+      stake: typeof clampStake === 'function' ? clampStake(net.rules?.stake ?? cfg.stake) : 20,
+    } : {}),
     winner,
     score,
     fouls: stats.map(s => s.fouls),
     seconds: Math.round((Date.now() - gameStartedAt) / 1000),
-  });
+  };
+  game.xp = typeof xpForGame === 'function' ? xpForGame(game) : 0;
+  games.push(game);
   saveRecords(games);
   renderRecords();
   if (typeof onGamesChanged === 'function') onGamesChanged(games);
@@ -159,7 +165,8 @@ function renderRecords() {
       const who = g.mode === 'ai' ? AI_LEVELS[g.level]?.name ?? ''
         : g.mode === 'online' ? `по сети${g.peer ? `, ${escapeHtml(g.peer)}` : ''}` : 'вдвоём';
       const score = g.mode === 'hotseat' ? `${g.score[0]} : ${g.score[1]}` : `${g.score[mySeat(g)]} : ${g.score[1 - mySeat(g)]}`;
-      return `<div class="game ${cls}"><span class="res">${label}</span><span class="sc">${score}</span>` +
+      const xp = g.xp ? ` · +${g.xp}` : '';
+      return `<div class="game ${cls}"><span class="res">${label}</span><span class="sc">${score}${xp}</span>` +
         `<span class="meta">${who} · ${formatWhen(g.at)} · ${formatDuration(g.seconds)}</span></div>`;
     }).join('') + '</div>';
 

@@ -201,11 +201,26 @@ function refreshControls() {
   document.getElementById('levelNetNote').textContent = net.active
     ? 'Идёт игра по сети: компьютер не участвует, а условия игры задал создатель комнаты.'
     : '';
+  const xpNote = document.getElementById('aiXpNote');
+  if (xpNote) {
+    const pack = AI_LEVELS[cfg.level];
+    xpNote.textContent = cfg.mode === 'ai'
+      ? `Победа: ${pack.xpWin} очков, поражение: ${pack.xpLoss}. Очки копятся к уровню и открывают стол, кии и цвета фишек.`
+      : 'Вдвоём на одном устройстве очки не начисляются.';
+  }
 }
 
 // Условия, которые в сетевой игре одинаковы у обоих игроков.
 function currentRules() {
-  return { shotTime: cfg.shotTime, table: cfg.table, hintLen: cfg.hintLen, circleDark: cfg.circleDark, freePlace: cfg.freePlace, zoneReturn: cfg.zoneReturn };
+  return {
+    shotTime: cfg.shotTime,
+    table: cfg.table,
+    hintLen: cfg.hintLen,
+    circleDark: cfg.circleDark,
+    freePlace: cfg.freePlace,
+    zoneReturn: cfg.zoneReturn,
+    stake: typeof clampStake === 'function' ? clampStake(cfg.stake) : (Number(cfg.stake) || 20),
+  };
 }
 
 function applyRules(r) {
@@ -215,6 +230,7 @@ function applyRules(r) {
   cfg.circleDark = r.circleDark !== false;
   cfg.freePlace = Boolean(r.freePlace);
   cfg.zoneReturn = Boolean(r.zoneReturn);
+  cfg.stake = typeof clampStake === 'function' ? clampStake(r.stake) : (Number(r.stake) || 20);
   document.getElementById('optCircleDark').checked = cfg.circleDark;
   document.getElementById('optFree').checked = cfg.freePlace;
   document.getElementById('optZoneReturn').checked = cfg.zoneReturn;

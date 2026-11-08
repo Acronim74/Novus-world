@@ -139,26 +139,33 @@ function pushAccountCloud() {
   cloudTimer = setTimeout(() => {
     cloudSet('records', { version: 1, games: loadRecords() });
     cloudSet('prizes', account.prizes);
+    if (typeof exportProgress === 'function') cloudSet('progress', exportProgress());
     const name = myName();
+    const lv = typeof playerLevel === 'function' ? playerLevel() : null;
     cloudSet('public', {
       name,
       at: Date.now(),
       photo: account.user.photoURL || '',
+      ...(lv ? { level: lv.level, xp: lv.xp } : {}),
     });
   }, 400);
 }
 
 async function pullAccountCloud() {
   if (!accountSignedIn()) return;
-  const [remoteRecords, remotePrizes, pub] = await Promise.all([
+  const [remoteRecords, remotePrizes, pub, remoteProgress] = await Promise.all([
     cloudGet('records'),
     cloudGet('prizes'),
     cloudGet('public'),
+    cloudGet('progress'),
   ]);
   const mergedGames = mergeGames(loadRecords(), Array.isArray(remoteRecords?.games) ? remoteRecords.games : []);
+  if (typeof backfillGameXp === 'function') backfillGameXp(mergedGames);
   saveRecords(mergedGames);
+  if (typeof invalidateProgressCache === 'function') invalidateProgressCache();
   const mergedPrizes = mergePrizes(loadPrizes(), remotePrizes && typeof remotePrizes === 'object' ? remotePrizes : {});
   savePrizes(mergedPrizes);
+  if (typeof mergeProgress === 'function') mergeProgress(remoteProgress);
   if (pub?.name && !myName()) {
     localStorage.setItem(NAME_KEY, String(pub.name).slice(0, 20));
   }
@@ -183,6 +190,7 @@ function refreshAccountPrizes(games) {
 }
 
 function onGamesChanged(games) {
+  if (typeof noteProgressFromGames === 'function') noteProgressFromGames(games);
   refreshAccountPrizes(games);
   pushAccountCloud();
   renderAccount();
@@ -404,6 +412,7 @@ function renderCabinetTabs() {
   const tabs = [
     ['player', 'Игрок'],
     ['games', 'Партии'],
+    ['table', 'Стол'],
     ['prizes', 'Призы'],
     ['auth', accountSignedIn() ? 'Аккаунт' : 'Вход'],
   ];
@@ -444,21 +453,28 @@ function renderPlayerPane() {
     `<div class="cab-card">` +
     `<div class="cab-id">${photo}<div class="cab-who">` +
     `<label class="field">Имя в игре<input id="accName" maxlength="20" autocomplete="nickname"></label>` +
-    `<div class="cab-rank ${rank.cls}">${escapeHtml(rank.name)}</div>` +
+    `<div class="cab-rank gold">${typeof playerLevel === 'function' ? `Уровень ${playerLevel().level}` : escapeHtml(rank.name)}</div>` +
+    `<div class="cab-rank-sub">${escapeHtml(rank.name)}</div>` +
     sync +
     `</div></div>` +
+    (typeof xpBarHtml === 'function' ? xpBarHtml() : '') +
     `<div class="cab-stats">` +
     `<div><b>${s.n}</b><span>${plural(s.n, 'партия', 'партии', 'партий')}</span></div>` +
     `<div><b>${s.win}</b><span>${plural(s.win, 'победа', 'победы', 'побед')}</span></div>` +
     `<div><b>${percent(s.win, s.win + s.loss)}</b><span>выигр.</span></div>` +
     `<div title="Лучшая серия: ${best}"><b>${run}</b><span>${best ? `серия · ${best}` : 'серия'}</span></div>` +
     `</div>` +
+    `<button type="button" id="cabGoTable" class="cab-prize-line">Стол и кии</button>` +
     `<button type="button" id="cabGoPrizes" class="cab-prize-line">Призы <b>${got}</b> из ${PRIZES.length}</button>` +
     guest + hotNote +
     `</div>`;
   bindNameField();
   document.getElementById('cabGoAuth')?.addEventListener('click', () => {
     account.tab = 'auth';
+    showCabinetTab();
+  });
+  document.getElementById('cabGoTable')?.addEventListener('click', () => {
+    account.tab = 'table';
     showCabinetTab();
   });
   document.getElementById('cabGoPrizes')?.addEventListener('click', () => {
@@ -540,6 +556,7 @@ function renderAccount() {
   }
   renderCabinetTabs();
   renderPlayerPane();
+  if (typeof renderTablePane === 'function') renderTablePane();
   renderPrizesPane();
   renderAuthPane();
   renderRecords();
@@ -569,11 +586,13 @@ function closeAccount() {
 
 function resetAccountProgress() {
   savePrizes({});
+  if (typeof resetLoadout === 'function') resetLoadout();
   pushAccountCloud();
   renderAccount();
 }
 
 account.prizes = loadPrizes();
+refreshAccountPrizes(loadRecords());
 document.getElementById('btnAccount').addEventListener('click', () => openCabinet('player'));
 document.getElementById('btnCabinet')?.addEventListener('click', () => openCabinet('player'));
 document.getElementById('btnAccountClose').addEventListener('click', closeCabinet);

@@ -198,16 +198,19 @@ function draw() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   applyView();
 
+  const skin = typeof tableSkin === 'function' ? tableSkin() : null;
+  const rail = skin?.rail || { from: '#6b3f1f', to: '#4a2a12' };
   const frame = ctx.createLinearGradient(-RAIL_W, -RAIL_W, FIELD + RAIL_W, FIELD + RAIL_W);
-  frame.addColorStop(0, '#6b3f1f');
-  frame.addColorStop(1, '#4a2a12');
+  frame.addColorStop(0, rail.from);
+  frame.addColorStop(1, rail.to);
   ctx.fillStyle = frame;
   ctx.fillRect(-RAIL_W, -RAIL_W, FIELD + 2 * RAIL_W, FIELD + 2 * RAIL_W);
 
-  ctx.fillStyle = '#efe2c4';
+  ctx.fillStyle = skin?.felt?.fill || '#efe2c4';
   ctx.fillRect(0, 0, FIELD, FIELD);
 
-  drawLines();
+  drawLines(skin?.felt?.line || '#1b1b1b');
+  if (skin?.deco) drawDeco(skin.deco);
   if (phase === 'place') drawPlacementArea();
   drawPockets();
 
@@ -225,8 +228,33 @@ function draw() {
   if (phase === 'over') drawBanner(winnerText);
 }
 
-function drawLines() {
-  ctx.strokeStyle = '#1b1b1b';
+function drawDeco(deco) {
+  if (!deco || deco.id === 'none') return;
+  const accent = deco.accent || '#c9a227';
+  const o0 = -RAIL_W;
+  const o1 = FIELD + RAIL_W;
+  const cap = 78;
+  const t = 7;
+  ctx.save();
+  ctx.fillStyle = accent;
+  const corners = [[o0, o0], [o1 - cap, o0], [o0, o1 - cap], [o1 - cap, o1 - cap]];
+  for (const [x, y] of corners) {
+    ctx.fillRect(x, y, cap, t);
+    ctx.fillRect(x, y, t, cap);
+    ctx.fillRect(x + cap - t, y, t, cap);
+    ctx.fillRect(x, y + cap - t, cap, t);
+  }
+  if (deco.id === 'inlay') {
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.2;
+    ctx.strokeRect(8, 8, FIELD - 16, FIELD - 16);
+    ctx.strokeRect(-RAIL_W / 2, -RAIL_W / 2, FIELD + RAIL_W, FIELD + RAIL_W);
+  }
+  ctx.restore();
+}
+
+function drawLines(color) {
+  ctx.strokeStyle = color || '#1b1b1b';
   ctx.lineWidth = Math.max(LINE_W, px1());
   for (const v of [ZONE, FIELD - ZONE]) {
     line(v, 0, v, FIELD);
@@ -282,9 +310,10 @@ function drawPuck(b) {
 
   let fill;
   if (b.kind === 'striker') {
+    const strikerSkin = typeof tableSkin === 'function' ? tableSkin().striker : null;
     fill = ctx.createRadialGradient(-b.r * 0.3, -b.r * 0.3, 2, 0, 0, b.r);
-    fill.addColorStop(0, '#e6c48f');
-    fill.addColorStop(1, '#b8874c');
+    fill.addColorStop(0, strikerSkin?.from || '#e6c48f');
+    fill.addColorStop(1, strikerSkin?.to || '#b8874c');
   } else {
     fill = PLAYERS[b.owner].color;
   }
@@ -329,9 +358,10 @@ function drawCue() {
   const endY = tipY - aim.dirY * len;
   ctx.save();
   ctx.lineCap = 'round';
+  const cue = typeof tableSkin === 'function' ? tableSkin().cue : null;
   const g = ctx.createLinearGradient(tipX, tipY, endX, endY);
-  g.addColorStop(0, '#f3dfb7');
-  g.addColorStop(1, '#8d5a2b');
+  g.addColorStop(0, cue?.tip || '#f3dfb7');
+  g.addColorStop(1, cue?.shaft || '#8d5a2b');
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
   ctx.lineWidth = 9;
   line(tipX + 4, tipY + 5, endX + 4, endY + 5);

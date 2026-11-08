@@ -734,6 +734,7 @@ let rulesMode = 'create';
 
 function rulesLines(r) {
   return [
+    `Очки за победу: ${typeof clampStake === 'function' ? clampStake(r.stake) : (Number(r.stake) || 20)}`,
     `Время на удар: ${Number(r.shotTime) ? `${r.shotTime} с` : 'без лимита'}`,
     `Натирка стола: ${RULE_NAMES.table[r.table] || r.table}`,
     `Помощь при прицеливании: ${RULE_NAMES.hintLen[r.hintLen] || r.hintLen}`,
@@ -765,7 +766,9 @@ for (const seg of rulesDialog.querySelectorAll('.seg[data-key]')) {
   seg.addEventListener('click', e => {
     const b = e.target.closest('button[data-v]');
     if (!b) return;
-    rulesDraft[seg.dataset.key] = seg.dataset.key === 'shotTime' ? Number(b.dataset.v) : b.dataset.v;
+    rulesDraft[seg.dataset.key] = seg.dataset.key === 'shotTime' || seg.dataset.key === 'stake'
+      ? Number(b.dataset.v)
+      : b.dataset.v;
     renderRulesDraft();
   });
 }
