@@ -88,8 +88,12 @@ function collidePucks(a, b) {
   a.vy -= j * ia * ny;
   b.vx += j * ib * nx;
   b.vy += j * ib * ny;
+  clampToRails(a);
+  clampToRails(b);
   springBack(b, a, nx, ny, 1 - fb);
   springBack(a, b, -nx, -ny, 1 - fa);
+  clampToRails(a);
+  clampToRails(b);
   // Сжатый у борта ряд выдавливает пешки в поле: удар идёт не строго вдоль борта, а под углом.
   buckleOffRail(a, b, nx, ny, vrel);
 
@@ -148,6 +152,20 @@ function buckleOffRail(a, b, nx, ny, vrel) {
   }
 }
 
+// Фишка, прижатая к борту, не может двигаться в борт: борт забирает эту часть удара,
+// и фишка уходит вдоль борта, толкая соседей по ряду.
+function clampToRails(b) {
+  if (b.z >= RAIL_H) return;
+  for (const rail of RAILS) {
+    if (rail.gap(b) > b.r + 0.5) continue;
+    const vn = b.vx * rail.nx + b.vy * rail.ny;
+    if (vn < 0) {
+      b.vx -= vn * rail.nx;
+      b.vy -= vn * rail.ny;
+    }
+  }
+}
+
 function collideRails(b) {
   for (const rail of RAILS) {
     const gap = rail.gap(b);
@@ -202,9 +220,10 @@ function checkPockets(b, dt) {
   if (b.z === 0) {
     for (const pk of POCKETS) {
       const d = Math.hypot(b.x - pk.x, b.y - pk.y);
-      // У борта центр пешки проходит ровно по краю лузы, но половина диска уже над отверстием —
-      // так забивают первым ударом, катя пешку вдоль борта в угол.
-      const reach = POCKET_R + b.r * 0.45;
+      // У борта центр пешки идёт по краю лузы, но диск уже над отверстием.
+      // Прибавка только пешке у борта: шайба и свободные фишки проверяются по Ø100.
+      const alongRail = b.kind === 'pawn' && RAILS.some(r => r.gap(b) <= b.r + 0.5);
+      const reach = POCKET_R + (alongRail ? b.r * 0.45 : 0);
       if (d < reach) overhang = Math.max(overhang, Math.min(1, (reach - d) / b.r));
     }
   }
