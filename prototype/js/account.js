@@ -80,7 +80,7 @@ function authMessage(err) {
   if (code === 'auth/weak-password') return 'Пароль слишком короткий: нужно не меньше 6 символов.';
   if (code === 'auth/invalid-email') return 'Похоже, почта написана с ошибкой.';
   if (code === 'auth/network-request-failed') return 'Нет связи с сервером. Проверьте интернет.';
-  if (code === 'auth/credential-already-in-use') return 'Этот Google-аккаунт уже привязан к другому игроку.';
+  if (code === 'auth/credential-already-in-use') return 'Этот Google уже используется. Нажмите «Войти через Google» ещё раз — откроется тот же аккаунт.';
   if (code === 'auth/requires-recent-login') return 'Чтобы удалить аккаунт, нужно войти ещё раз — так Google и почта подтверждают, что это вы.';
   return err?.message || String(err);
 }
@@ -212,24 +212,13 @@ async function signInGoogle() {
   await withAccount(async () => {
     const auth = firebase.auth();
     const provider = googleProvider();
+    // Всегда вход, не привязка гостя: иначе со второго устройства Google «уже занят».
     if (preferAuthRedirect()) {
       sessionStorage.setItem('novus.openAccount', '1');
       await auth.signInWithRedirect(provider);
       return;
     }
-    if (auth.currentUser?.isAnonymous) {
-      try {
-        await auth.currentUser.linkWithPopup(provider);
-      } catch (e) {
-        if (e.code === 'auth/credential-already-in-use') {
-          const cred = firebase.auth.GoogleAuthProvider.credentialFromError(e);
-          if (!cred) throw e;
-          await auth.signInWithCredential(cred);
-        } else throw e;
-      }
-    } else {
-      await auth.signInWithPopup(provider);
-    }
+    await auth.signInWithPopup(provider);
   });
 }
 
@@ -243,8 +232,16 @@ async function signInEmail(create) {
   }
   await withAccount(async () => {
     const auth = firebase.auth();
-    if (create) await auth.createUserWithEmailAndPassword(email, password);
-    else await auth.signInWithEmailAndPassword(email, password);
+    if (!create) {
+      await auth.signInWithEmailAndPassword(email, password);
+      return;
+    }
+    try {
+      await auth.createUserWithEmailAndPassword(email, password);
+    } catch (e) {
+      if (e.code !== 'auth/email-already-in-use') throw e;
+      await auth.signInWithEmailAndPassword(email, password);
+    }
   });
 }
 
@@ -299,7 +296,7 @@ function accountStatus() {
     return 'Гость — статистика только в этом браузере.';
   }
   const mail = account.user.email || 'Google';
-  return `Вход: ${mail}. Статистика и призы сохраняются в облаке.`;
+  return `Вход: ${mail}. На другом устройстве войдите тем же Google или той же почтой — статистика и призы подтянутся.`;
 }
 
 function renderAccount() {
@@ -354,7 +351,7 @@ function renderAccount() {
   }
 
   box.innerHTML =
-    '<p class="tip">Войдите — статистика партий и призы будут следовать за вами на телефон, планшет и компьютер. Без входа всё остаётся только в этом браузере.</p>' +
+    '<p class="tip">Войдите — статистика и призы будут на телефоне, планшете и компьютере. На новом устройстве нажмите «Войти через Google» или введите ту же почту и пароль. Без входа всё остаётся только в этом браузере.</p>' +
     `<button id="accGoogle" class="primary"${busy}>Войти через Google</button>` +
     '<div class="acc-or">или почта и пароль</div>' +
     '<label class="field">Почта<input id="accEmail" type="email" autocomplete="email"></label>' +
