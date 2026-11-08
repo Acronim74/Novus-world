@@ -81,6 +81,7 @@ function authMessage(err) {
   if (code === 'auth/invalid-email') return 'Похоже, почта написана с ошибкой.';
   if (code === 'auth/network-request-failed') return 'Нет связи с сервером. Проверьте интернет.';
   if (code === 'auth/credential-already-in-use') return 'Этот Google-аккаунт уже привязан к другому игроку.';
+  if (code === 'auth/requires-recent-login') return 'Чтобы удалить аккаунт, нужно войти ещё раз — так Google и почта подтверждают, что это вы.';
   return err?.message || String(err);
 }
 
@@ -255,6 +256,44 @@ async function signOutAccount() {
   });
 }
 
+async function reauthenticate(user) {
+  const google = user.providerData.some(p => p.providerId === 'google.com');
+  if (google) {
+    await user.reauthenticateWithPopup(googleProvider());
+    return;
+  }
+  const email = user.email;
+  const password = prompt('Чтобы удалить аккаунт, введите пароль от этой почты.') || '';
+  if (!email || !password) throw new Error('Без пароля аккаунт удалить нельзя.');
+  const cred = firebase.auth.EmailAuthProvider.credential(email, password);
+  await user.reauthenticateWithCredential(cred);
+}
+
+async function deleteAccount() {
+  if (!accountSignedIn()) return;
+  if (net.code) {
+    account.error = 'Сначала выйдите из комнаты.';
+    renderAccount();
+    return;
+  }
+  if (!confirm('Удалить аккаунт безвозвратно?\n\nОблачная статистика и призы исчезнут на всех устройствах. Записи на этом телефоне или компьютере останутся, как у гостя.')) return;
+  await withAccount(async () => {
+    const user = firebase.auth().currentUser;
+    const uid = user.uid;
+    await net.backend.set(`users/${uid}`, null);
+    try {
+      await user.delete();
+    } catch (e) {
+      if (e.code !== 'auth/requires-recent-login') throw e;
+      await reauthenticate(firebase.auth().currentUser);
+      await net.backend.set(`users/${uid}`, null);
+      await firebase.auth().currentUser.delete();
+    }
+    await firebase.auth().signInAnonymously();
+    account.notice = 'Аккаунт удалён. На этом устройстве можно играть как гость.';
+  });
+}
+
 function accountStatus() {
   if (!accountSignedIn()) {
     return 'Гость — статистика только в этом браузере.';
@@ -299,7 +338,8 @@ function renderAccount() {
       '<label class="field">Имя в игре<input id="accName" maxlength="20" autocomplete="nickname"></label>' +
       notice + err +
       '<h3>Призы</h3><div class="prizes">' + prizes + '</div>' +
-      `<button id="accOut"${busy}>Выйти из аккаунта</button>`;
+      `<button id="accOut"${busy}>Выйти из аккаунта</button>` +
+      `<button id="accDelete" class="danger"${busy}>Удалить аккаунт</button>`;
     const name = document.getElementById('accName');
     name.value = myName();
     name.addEventListener('change', () => {
@@ -309,6 +349,7 @@ function renderAccount() {
       renderAccount();
     });
     document.getElementById('accOut').addEventListener('click', signOutAccount);
+    document.getElementById('accDelete').addEventListener('click', deleteAccount);
     return;
   }
 

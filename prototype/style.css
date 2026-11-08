@@ -564,7 +564,14 @@ table.rec tr.total td { font-weight: 700; border-bottom: none; }
 .acc-mail-actions { justify-content: stretch; }
 .acc-mail-actions button { flex: 1; }
 
-#accOut { width: 100%; margin-top: 16px; }
+#accOut, #accDelete { width: 100%; margin-top: 10px; }
+#accOut { margin-top: 16px; }
+button.danger {
+  background: #4a2424;
+  border-color: #7a3a3a;
+  color: #ffcdd2;
+}
+button.danger:hover { background: #5c2a2a; }
 
 .prizes {
   display: grid;

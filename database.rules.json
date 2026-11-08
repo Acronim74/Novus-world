@@ -22,17 +22,10 @@
     },
     "users": {
       "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
         "public": {
-          ".read": "auth != null",
-          ".write": "auth != null && auth.uid === $uid"
-        },
-        "records": {
-          ".read": "auth != null && auth.uid === $uid",
-          ".write": "auth != null && auth.uid === $uid"
-        },
-        "prizes": {
-          ".read": "auth != null && auth.uid === $uid",
-          ".write": "auth != null && auth.uid === $uid"
+          ".read": "auth != null"
         }
       }
     }
