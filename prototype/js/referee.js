@@ -286,6 +286,7 @@ function endShot() {
       winnerText = 'Обе стороны забили все пешки — сет переигрывается (п. 20.5)';
     }
   } else if (left[p] === 0 && keepTurn && !lostTurn[p] && p === firstShooter) {
+    if (typeof finishTraceShot === 'function') finishTraceShot({ ownIn, foul, keepTurn }, { note: 'п. 20.4: ход сопернику' });
     shot = null;
     log('Первая серия на все 8 пешек. Серия прерывается, ход переходит сопернику (п. 20.4).', 'info');
     setLastShot(p, items, { cls: 'pass', text: 'Все 8 забиты. Ход сопернику (п. 20.4)' });
@@ -294,11 +295,18 @@ function endShot() {
     return;
   } else if (left[0] === 0 || left[1] === 0) {
     winner = left[0] === 0 ? 0 : 1;
-    winnerText = `${PLAYERS[winner].name} выиграли сет!`;
+    const unanswered = winner === firstShooter && !lostTurn[firstShooter];
+    winnerText = unanswered
+      ? `${PLAYERS[winner].name} выиграли сет: соперник не ответил первой серией (п. 20.4)`
+      : `${PLAYERS[winner].name} выиграли сет!`;
   }
 
+  if (typeof finishTraceShot === 'function') {
+    finishTraceShot({ ownIn, foul, keepTurn }, winnerText ? { note: winnerText } : null);
+  }
   shot = null;
   if (winnerText) {
+    if (typeof endTraceGame === 'function') endTraceGame(winner, winnerText);
     phase = 'over';
     setWinner = winner;
     if (net.active && current === net.seat) addMatchPoint(winner);
@@ -343,13 +351,35 @@ function timeoutShot() {
   stats[p].history.unshift('время на удар истекло (п. 17.1.15)');
   if (debt[p] > 0) payDebt(p);
   lostTurn[p] = true;
+  if (typeof finishTraceShot === 'function' && matchTrace?.game) {
+    matchTrace.game.shots.push({
+      n: matchTrace.game.shots.length + 1,
+      player: p,
+      ai: typeof isAI === 'function' && isAI(p),
+      power: 0,
+      v0: 0,
+      vmax: 0,
+      gain: 0,
+      spikes: [],
+      from: [Math.round(striker.x), Math.round(striker.y)],
+      note: 'время на удар истекло (п. 17.1.15)',
+      keep: false,
+      left: [pawnsOnTable(0) + debt[0], pawnsOnTable(1) + debt[1]],
+    });
+  }
   const rematch = noteDarkMiss(p, false);
-  if (rematch) {
-    winnerText = 'Только тёмные пешки и по три промаха — сет переигрывается (п. 20.6)';
+  const left = [pawnsOnTable(0) + debt[0], pawnsOnTable(1) + debt[1]];
+  if (rematch || left[0] === 0 || left[1] === 0) {
+    const winner = rematch ? null : (left[0] === 0 ? 0 : 1);
+    winnerText = rematch
+      ? 'Только тёмные пешки и по три промаха — сет переигрывается (п. 20.6)'
+      : (winner === firstShooter && !lostTurn[firstShooter]
+        ? `${PLAYERS[winner].name} выиграли сет: соперник не ответил первой серией (п. 20.4)`
+        : `${PLAYERS[winner].name} выиграли сет!`);
     phase = 'over';
-    setWinner = null;
-    const left = [pawnsOnTable(0) + debt[0], pawnsOnTable(1) + debt[1]];
-    recordGame(null, left.map(n => 8 - n));
+    setWinner = winner;
+    if (typeof endTraceGame === 'function') endTraceGame(winner, winnerText);
+    recordGame(winner, left.map(n => 8 - n));
     setLastShot(p, [{ cls: 'bad', icon: '⏱', text: `Время на удар (${cfg.shotTime} с) истекло. ${toDebt ? 'Штрафная пешка в долг' : 'Штрафная пешка выставлена'}` }],
       { cls: 'win', text: winnerText });
     updatePanel();

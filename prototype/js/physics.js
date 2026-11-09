@@ -16,7 +16,10 @@ function physRandom() {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
+let traceCause = '';
+
 function physicsStep(dt) {
+  traceCause = '';
   const live = bodies.filter(b => b.state === 'table');
   for (const b of live) integrate(b, dt);
   // Несколько проходов, чтобы фишка, зажатая бортами или другими фишками, вела себя как жёсткая опора.
@@ -30,6 +33,7 @@ function physicsStep(dt) {
   }
   for (const b of live) if (b.state === 'table') checkPockets(b, dt);
   trackStrikerReturn();
+  if (typeof noteTraceSpike === 'function') noteTraceSpike(traceCause || 'шаг');
 }
 
 function decel(b) {
@@ -99,11 +103,16 @@ function collidePucks(a, b) {
   popUp(a, vrel);
   popUp(b, vrel);
 
+  if (a.kind === 'striker' || b.kind === 'striker') traceCause = 'фишка';
+
   if (vrel > cfg.hopThr) {
     const light = a.m < b.m ? a : b.m < a.m ? b : (physRandom() < 0.5 ? a : b);
     // Прижатая к борту пешка не подскакивает: удар остаётся в плоскости и идёт вдоль ряда.
     const pressed = RAILS.some(r => r.gap(light) <= light.r + 0.5);
-    if (!pressed) light.vz += (vrel - cfg.hopThr) * cfg.hopK * (0.5 + physRandom());
+    if (!pressed) {
+      light.vz += (vrel - cfg.hopThr) * cfg.hopK * (0.5 + physRandom());
+      if (light.kind === 'striker') traceCause = 'подскок';
+    }
   }
 }
 
@@ -142,10 +151,12 @@ function buckleOffRail(a, b, nx, ny, vrel) {
     if (rail.gap(a) <= a.r + 1) {
       a.vx += rail.nx * kick;
       a.vy += rail.ny * kick;
+      if (a.kind === 'striker') traceCause = 'веер';
     }
     if (rail.gap(b) <= b.r + 1) {
       b.vx += rail.nx * kick;
       b.vy += rail.ny * kick;
+      if (b.kind === 'striker') traceCause = 'веер';
     }
   }
 }
@@ -197,6 +208,7 @@ function collideRails(b) {
       b.vy = rail.ny * vnOut + ty * vt;
       popUp(b, vn);
       noteRail(b, rail.side);
+      if (b.kind === 'striker') traceCause = 'борт';
     } else if (vn > 0) {
       b.vx += vn * rail.nx;
       b.vy += vn * rail.ny;

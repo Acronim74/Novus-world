@@ -41,9 +41,10 @@ function shoot(seed = (Math.random() * 4294967296) >>> 0) {
   striker.vx = aim.dirX * speed;
   striker.vy = aim.dirY * speed;
   shot = makeShotRecord(current);
+  if (typeof beginTraceShot === 'function') beginTraceShot(seed);
   phase = 'moving';
   aim.charging = false;
-  log(`${PLAYERS[current].name}${isAI(current) ? ' (компьютер)' : ''}: удар, сила ${Math.round(aim.power * 100)}%`, 'shot');
+  log(`${PLAYERS[current].name}${isAI(current) ? ' (компьютер)' : ''}: удар, сила ${Math.round(aim.power * 100)}% · зерно ${seed >>> 0}`, 'shot');
   netShotStarted(seed);
   updatePanel();
 }

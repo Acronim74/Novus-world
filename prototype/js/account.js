@@ -412,6 +412,7 @@ function renderCabinetTabs() {
   const tabs = [
     ['player', 'Игрок'],
     ['games', 'Партии'],
+    ['trace', 'Трасса'],
     ['table', 'Стол'],
     ['prizes', 'Призы'],
     ['auth', accountSignedIn() ? 'Аккаунт' : 'Вход'],
@@ -557,6 +558,7 @@ function renderAccount() {
   renderCabinetTabs();
   renderPlayerPane();
   if (typeof renderTablePane === 'function') renderTablePane();
+  if (typeof renderTracePane === 'function') renderTracePane();
   renderPrizesPane();
   renderAuthPane();
   renderRecords();

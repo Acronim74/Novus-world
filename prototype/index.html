@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=41">
+  <link rel="stylesheet" href="style.css?v=42">
 </head>
 <body>
   <div id="app">
@@ -244,6 +244,7 @@
           <button type="button" id="btnRecordsReset">Сбросить</button>
         </div>
       </div>
+      <div class="cab-pane" data-cab="trace" id="cabTrace"></div>
       <div class="cab-pane" data-cab="table" id="cabTable"></div>
       <div class="cab-pane" data-cab="prizes" id="cabPrizes"></div>
       <div class="cab-pane" data-cab="auth" id="accountBody"></div>
@@ -304,6 +305,12 @@
       <label class="range">Порог вылета пешки, мм/с <span></span><input type="range" id="optClimbPawn" min="1000" max="6000" step="100"></label>
     </details>
 
+    <details class="block" id="traceBox" open>
+      <summary>Трасса партии</summary>
+      <div class="tip">Удары этой партии: сила, зерно, скорость шайбы. Красным — если шайба ускорилась сама.</div>
+      <div id="traceLive"></div>
+    </details>
+
     <div class="block log">
       <div class="label">Журнал</div>
       <ol id="log"></ol>
@@ -311,21 +318,22 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=41"></script>
-  <script src="js/state.js?v=41"></script>
-  <script src="js/zones.js?v=41"></script>
-  <script src="js/shot.js?v=41"></script>
-  <script src="js/physics.js?v=41"></script>
-  <script src="js/referee.js?v=41"></script>
-  <script src="js/ai.js?v=41"></script>
-  <script src="js/records.js?v=41"></script>
-  <script src="js/progress.js?v=41"></script>
-  <script src="js/render.js?v=41"></script>
-  <script src="js/input.js?v=41"></script>
-  <script src="js/ui.js?v=41"></script>
-  <script src="js/net-config.js?v=41"></script>
-  <script src="js/net.js?v=41"></script>
-  <script src="js/account.js?v=41"></script>
-  <script src="js/main.js?v=41"></script>
+  <script src="js/config.js?v=42"></script>
+  <script src="js/state.js?v=42"></script>
+  <script src="js/zones.js?v=42"></script>
+  <script src="js/shot.js?v=42"></script>
+  <script src="js/physics.js?v=42"></script>
+  <script src="js/referee.js?v=42"></script>
+  <script src="js/ai.js?v=42"></script>
+  <script src="js/records.js?v=42"></script>
+  <script src="js/trace.js?v=42"></script>
+  <script src="js/progress.js?v=42"></script>
+  <script src="js/render.js?v=42"></script>
+  <script src="js/input.js?v=42"></script>
+  <script src="js/ui.js?v=42"></script>
+  <script src="js/net-config.js?v=42"></script>
+  <script src="js/net.js?v=42"></script>
+  <script src="js/account.js?v=42"></script>
+  <script src="js/main.js?v=42"></script>
 </body>
 </html>

@@ -551,6 +551,27 @@ table.rec tr.total td { font-weight: 700; border-bottom: none; }
 .cab-pane { display: none; }
 .cab-pane.on { display: block; }
 
+.trace-game {
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2a3338;
+}
+.trace-shot {
+  margin: 8px 0;
+  padding: 8px 10px;
+  background: #1f2529;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.trace-shot.hot { border: 1px solid #e57373; }
+.trace-shot .spike { color: #ff8a80; }
+.trace-spikes {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: #ffab91;
+}
+#traceLive { max-height: 240px; overflow-y: auto; }
+
 #account .field {
   display: block;
   color: #8fa0aa;
