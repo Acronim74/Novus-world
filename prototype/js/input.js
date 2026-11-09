@@ -2,9 +2,14 @@
 
 // ===== Управление =====
 // Мышь: наведение — прицел, нажать и тянуть назад — сила.
-// Палец: вести по полю — прицел, вниз по шкале силы — сила, отпустить — удар.
+// Палец: коснуться стола — прицел в эту точку; провести — довести;
+//   шкала силы — удар. Мелкое дрожание и срыв при подъёме пальца отсекаются.
 const TOUCH_GRAB_PX = 26;
 const GAUGE_PAD_PX = 14;
+const TOUCH_AIM_TAP_PX = 20;
+const TOUCH_AIM_MIN = 40;
+const TOUCH_AIM_TAU = 45;
+const TOUCH_AIM_LIFT_MS = 36;
 
 function toWorld(e) {
   const rect = canvas.getBoundingClientRect();
@@ -32,13 +37,79 @@ function onStriker(e, w) {
   return Math.hypot(w.x - striker.x, w.y - striker.y) <= striker.r + extra;
 }
 
-function pointAimAt(w) {
+function pointAimAt(w, k = 1) {
   const dx = w.x - striker.x;
   const dy = w.y - striker.y;
   const d = Math.hypot(dx, dy);
-  if (d < striker.r) return;
-  aim.dirX = dx / d;
-  aim.dirY = dy / d;
+  const min = k < 1 ? TOUCH_AIM_MIN : striker.r;
+  if (d < min) return false;
+  const tx = dx / d;
+  const ty = dy / d;
+  if (k >= 1) {
+    aim.dirX = tx;
+    aim.dirY = ty;
+    return true;
+  }
+  let x = aim.dirX + (tx - aim.dirX) * k;
+  let y = aim.dirY + (ty - aim.dirY) * k;
+  const n = Math.hypot(x, y);
+  if (n < 1e-6) return false;
+  aim.dirX = x / n;
+  aim.dirY = y / n;
+  return true;
+}
+
+function rememberTouchAim(now, e) {
+  if (!drag || drag.type !== 'point') return;
+  drag.hist.push({
+    t: now,
+    x: aim.dirX,
+    y: aim.dirY,
+    cx: e ? e.clientX : drag.startX,
+    cy: e ? e.clientY : drag.startY,
+  });
+  while (drag.hist.length && now - drag.hist[0].t > 180) drag.hist.shift();
+}
+
+function trackTouchAim(e, w) {
+  const moved = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+  if (moved > drag.moved) drag.moved = moved;
+  if (drag.moved < TOUCH_AIM_TAP_PX) return;
+  const now = performance.now();
+  const dt = Math.min(32, now - drag.lastT);
+  drag.lastT = now;
+  const k = 1 - Math.exp(-dt / TOUCH_AIM_TAU);
+  if (pointAimAt(w, k)) rememberTouchAim(now, e);
+}
+
+function settleTouchAim() {
+  if (!drag || drag.type !== 'point') return;
+  if (drag.moved < TOUCH_AIM_TAP_PX) {
+    if (drag.downDir) {
+      aim.dirX = drag.downDir.x;
+      aim.dirY = drag.downDir.y;
+    }
+    return;
+  }
+  const hist = drag.hist;
+  if (hist.length < 2) return;
+  const last = hist[hist.length - 1];
+  const cutoff = last.t - TOUCH_AIM_LIFT_MS;
+  let i0 = 0;
+  for (let i = 0; i < hist.length; i++) {
+    if (hist[i].t <= cutoff) i0 = i;
+  }
+  const a = hist[i0];
+  const b = i0 > 0 ? hist[i0 - 1] : a;
+  const dt = last.t - a.t;
+  if (dt < 12) return;
+  const vdt = Math.max(1, a.t - b.t);
+  const predX = a.cx + (a.cx - b.cx) / vdt * dt;
+  const predY = a.cy + (a.cy - b.cy) / vdt * dt;
+  if (Math.hypot(last.cx - predX, last.cy - predY) >= 16) {
+    aim.dirX = a.x;
+    aim.dirY = a.y;
+  }
 }
 
 // deg > 0 — по часовой стрелке на экране.
@@ -61,9 +132,10 @@ canvas.addEventListener('pointerdown', e => {
     cancelAim();
     return;
   }
+  e.preventDefault();
   const touch = e.pointerType !== 'mouse';
   const w = toWorld(e);
-  canvas.setPointerCapture(e.pointerId);
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
   if (touch && inGauge(e)) {
     drag = { type: 'gauge', id: e.pointerId, startX: e.clientX, startY: e.clientY };
     aim.charging = true;
@@ -72,8 +144,21 @@ canvas.addEventListener('pointerdown', e => {
   } else if (onStriker(e, w)) {
     drag = { type: 'striker', id: e.pointerId, offX: striker.x - w.x, offY: striker.y - w.y };
   } else if (touch) {
-    drag = { type: 'point', id: e.pointerId };
-    pointAimAt(w);
+    const now = performance.now();
+    drag = {
+      type: 'point',
+      id: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      lastT: now,
+      moved: 0,
+      hist: [],
+      downDir: null,
+    };
+    if (pointAimAt(w)) {
+      drag.downDir = { x: aim.dirX, y: aim.dirY };
+      rememberTouchAim(now);
+    }
   } else {
     drag = { type: 'aim', id: e.pointerId };
     aim.charging = true;
@@ -90,7 +175,7 @@ canvas.addEventListener('pointermove', e => {
   if (drag?.type === 'striker') {
     moveStriker(w.x + drag.offX, w.y + drag.offY);
   } else if (drag?.type === 'point') {
-    pointAimAt(w);
+    trackTouchAim(e, w);
   } else if (drag?.type === 'gauge') {
     const g = view.gauge;
     const pull = (g.horiz ? e.clientX - drag.startX : wideGauge() ? e.clientY - drag.startY : drag.startY - e.clientY) * view.dpr;
@@ -110,6 +195,7 @@ canvas.addEventListener('pointermove', e => {
 
 canvas.addEventListener('pointerup', e => {
   if (drag && e.pointerId !== drag.id) return;
+  if (drag?.type === 'point') settleTouchAim();
   const charged = (drag?.type === 'aim' || drag?.type === 'gauge') && aim.charging && aim.power > 0.01;
   if (charged && phase === 'place') shoot();
   else cancelAim();
@@ -117,7 +203,9 @@ canvas.addEventListener('pointerup', e => {
 });
 
 canvas.addEventListener('pointercancel', e => {
-  if (drag && e.pointerId === drag.id) cancelAim();
+  if (!drag || e.pointerId !== drag.id) return;
+  if (drag.type === 'point') settleTouchAim();
+  cancelAim();
 });
 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
