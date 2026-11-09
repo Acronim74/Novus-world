@@ -1477,3 +1477,58 @@ body.net .buttons .react { display: block; }
   .event { padding: 4px 6px; font-size: 12px; }
   #fouls table { font-size: 12px; }
 }
+
+/* ----- Залы ----- */
+#roomsList { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.room-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #333c42;
+  border-radius: 8px;
+  background: #2b3338;
+}
+.room-card.here { border-color: #3d8b4b; box-shadow: inset 3px 0 0 #3d8b4b; }
+.room-card.shut { opacity: 0.6; }
+.room-card.fresh { animation: roomFresh 1.6s ease-out 2; }
+@keyframes roomFresh { 50% { background: #3a4a2e; } }
+.room-icon { font-size: 26px; width: 32px; text-align: center; flex-shrink: 0; }
+.room-body { flex: 1; min-width: 0; }
+.room-name { font-weight: 600; font-size: 15px; }
+.room-meta { color: #b9c4ca; font-size: 12px; }
+.room-note { color: #8fa0aa; font-size: 12px; margin-top: 2px; }
+.room-progress { color: #e6c35c; font-size: 12px; margin-top: 4px; }
+.room-xp { color: #8fa0aa; font-size: 11px; margin-top: 2px; }
+.room-card > button { flex-shrink: 0; min-width: 84px; padding: 10px 12px; }
+.room-extra { display: flex; gap: 8px; margin-top: 4px; }
+.room-extra button { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px; text-align: left; }
+.room-extra button.here { border-color: #3d8b4b; }
+.room-extra small { color: #8fa0aa; font-size: 11px; }
+.tip.warn { color: #e6c35c; }
+@media (max-width: 520px) {
+  .room-extra { flex-direction: column; }
+  .room-meta, .room-xp { font-size: 11px; }
+}
+
+/* ----- Обучение в первой партии ----- */
+#coach {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  width: min(440px, calc(100% - 24px));
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(32, 39, 43, 0.96);
+  border: 1px solid #3d8b4b;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.2s;
+}
+#coach.closed { opacity: 0; pointer-events: none; }
+#coach .coach-step { color: #8fa0aa; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+#coach .coach-title { font-weight: 600; font-size: 15px; margin: 2px 0 4px; }
+#coach .coach-text { font-size: 13px; color: #d5dde1; }
+#coach .coach-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+#coach .coach-actions button { padding: 8px 14px; }

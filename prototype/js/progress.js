@@ -141,6 +141,10 @@ function xpForGame(g) {
     return clampStake(g.stake);
   }
   if (g.mode === 'ai') {
+    if (g.room && typeof roomXp === 'function') {
+      const xp = roomXp(g);
+      if (xp != null) return xp;
+    }
     const pack = AI_LEVELS[g.level] || AI_LEVELS[2];
     const hint = g.hint || 'short';
     if (result === 'win') return scaleHintXp(pack.xpWin, hint, true);

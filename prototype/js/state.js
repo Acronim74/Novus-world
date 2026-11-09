@@ -65,6 +65,8 @@ function newGame() {
   clearLog();
   log('Новая партия. Первыми бьют красные (снизу).', 'info');
   if (typeof startTraceGame === 'function') startTraceGame();
+  if (typeof applyRoom === 'function') applyRoom();
+  if (typeof startTutorial === 'function') startTutorial();
   startTurn();
 }
 

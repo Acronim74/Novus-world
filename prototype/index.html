@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=42">
+  <link rel="stylesheet" href="style.css?v=43">
 </head>
 <body>
   <div id="app">
@@ -31,7 +31,7 @@
         <button id="btnOnline" class="primary">🌐 <span class="full">Играть по сети с другом</span><span class="short">По сети</span></button>
         <button id="btnUndo" class="undo"><span class="full">Вернуть позицию до удара</span><span class="short">↶ Отмена</span></button>
         <button id="btnReact" class="react">😊<span class="full"> Реакция сопернику</span></button>
-        <button id="btnNew"><span class="full">Новая партия</span><span class="short">Новая</span></button>
+        <button id="btnNew">🏆<span class="full"> Залы и новая партия</span><span class="short"> Залы</span></button>
         <button id="btnLevel">🎯<span class="full"> Сложность и время</span></button>
         <button id="btnCabinet">👤<span class="full"> Кабинет</span></button>
         <button id="btnDrawer">⚙<span class="full"> Настройки и журнал</span></button>
@@ -62,7 +62,7 @@
     </button>
     <button id="tabNew" data-tab="new">
       <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
-      <span>Новая партия</span>
+      <span>Залы</span>
     </button>
     <button id="tabSettings" data-tab="settings">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -87,6 +87,18 @@
         <button class="close">Отмена</button>
         <button id="btnConfirmNew" class="primary">Начать новый сет</button>
       </div>
+    </div>
+  </div>
+
+  <div id="rooms" class="modal closed">
+    <div class="sheet" role="dialog" aria-label="Залы">
+      <div class="drawer-head">
+        <span>Залы</span>
+        <button class="close" title="Закрыть">✕</button>
+      </div>
+      <p class="tip">Побеждайте компьютер — открываются новые залы: соперник сильнее, подсказка короче.</p>
+      <div id="roomsWarn" class="tip warn"></div>
+      <div id="roomsList"></div>
     </div>
   </div>
 
@@ -318,22 +330,24 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=42"></script>
-  <script src="js/state.js?v=42"></script>
-  <script src="js/zones.js?v=42"></script>
-  <script src="js/shot.js?v=42"></script>
-  <script src="js/physics.js?v=42"></script>
-  <script src="js/referee.js?v=42"></script>
-  <script src="js/ai.js?v=42"></script>
-  <script src="js/records.js?v=42"></script>
-  <script src="js/trace.js?v=42"></script>
-  <script src="js/progress.js?v=42"></script>
-  <script src="js/render.js?v=42"></script>
-  <script src="js/input.js?v=42"></script>
-  <script src="js/ui.js?v=42"></script>
-  <script src="js/net-config.js?v=42"></script>
-  <script src="js/net.js?v=42"></script>
-  <script src="js/account.js?v=42"></script>
-  <script src="js/main.js?v=42"></script>
+  <script src="js/config.js?v=43"></script>
+  <script src="js/state.js?v=43"></script>
+  <script src="js/zones.js?v=43"></script>
+  <script src="js/shot.js?v=43"></script>
+  <script src="js/physics.js?v=43"></script>
+  <script src="js/referee.js?v=43"></script>
+  <script src="js/ai.js?v=43"></script>
+  <script src="js/records.js?v=43"></script>
+  <script src="js/trace.js?v=43"></script>
+  <script src="js/progress.js?v=43"></script>
+  <script src="js/render.js?v=43"></script>
+  <script src="js/input.js?v=43"></script>
+  <script src="js/ui.js?v=43"></script>
+  <script src="js/net-config.js?v=43"></script>
+  <script src="js/net.js?v=43"></script>
+  <script src="js/account.js?v=43"></script>
+  <script src="js/rooms.js?v=43"></script>
+  <script src="js/tutorial.js?v=43"></script>
+  <script src="js/main.js?v=43"></script>
 </body>
 </html>

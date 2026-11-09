@@ -64,6 +64,7 @@ function takeSnapshot() {
 
 function restoreSnapshot() {
   if (!snapshot || phase === 'moving') return;
+  if (typeof roomUndoBlocked === 'function' && roomUndoBlocked()) return;
   if (phase === 'over') forgetGame(gameId);
   aiToken++;
   snapshot.bodies.forEach((s, i) => Object.assign(bodies[i], s));

@@ -26,7 +26,7 @@ function updatePanel() {
   const pl = PLAYERS[current];
   const peer = net.peerName || 'Соперник';
   const hint = phase === 'moving' ? 'Фишки в движении…'
-    : phase === 'over' ? 'Нажмите «Новая партия»'
+    : phase === 'over' ? (typeof currentRoom === 'function' && currentRoom() ? 'Нажмите «Залы» — сыграть ещё' : 'Нажмите «Новая партия»')
     : phase === 'ai' ? `Компьютер ${aiStatus}`
     : phase === 'remote' ? (net.peerOnline ? `${peer} целится…` : `${peer} не в сети — ждём`)
     : 'Поставьте шайбу, прицельтесь и ударьте';
@@ -34,7 +34,7 @@ function updatePanel() {
     ? `<span class="netline"><span class="dot ${net.peerOnline ? 'on' : net.peerUid ? 'off' : 'wait'}"></span>` +
       `По сети · ${net.code} · <b class="match">${matchLabel()}</b>` +
       `${net.peerUid ? ` · ${escapeHtml(peer)}` : ' · ждём соперника'}</span>`
-    : '';
+    : typeof roomLabel === 'function' && roomLabel() ? `<span class="netline">${roomLabel()}</span>` : '';
   document.getElementById('turn').innerHTML =
     `<span class="chip" style="background:${pl.color}"></span>Бьют <b>${pl.name}</b>` +
     '<span id="shotTimer" class="timer"></span>' +
@@ -62,7 +62,8 @@ function updatePanel() {
   }).join('');
 
   renderMini(peer);
-  for (const b of document.querySelectorAll('.undo')) b.disabled = !snapshot || phase === 'moving' || net.active;
+  const undoBlocked = typeof roomUndoBlocked === 'function' && roomUndoBlocked();
+  for (const b of document.querySelectorAll('.undo')) b.disabled = !snapshot || phase === 'moving' || net.active || undoBlocked;
   updatePower();
   renderSidePanels();
 }
@@ -192,11 +193,15 @@ function refreshControls() {
   document.getElementById('groupLevel').classList.toggle('dim', cfg.mode !== 'ai' || net.active);
   // В сетевой партии условия общие для обоих — их задал создатель комнаты.
   for (const id of ['groupTable', 'groupHint', 'groupTime']) document.getElementById(id).classList.toggle('locked', net.active);
+  // В зале соперника, подсказку и стол задаёт зал.
+  const room = typeof currentRoom === 'function' ? currentRoom() : null;
+  for (const id of ['groupLevel', 'groupTable', 'groupHint']) if (room) document.getElementById(id).classList.add('locked');
+  if (!room && !net.active) document.getElementById('groupLevel').classList.remove('locked');
   for (const id of ['optCircleDark', 'optFree', 'optZoneReturn']) document.getElementById(id).disabled = net.active;
   document.getElementById('tableNote').textContent = TABLE_STATES[cfg.table].note;
   const hint = HINT_MODES[cfg.hintLen];
   let hintNote = hint.note;
-  if (cfg.mode === 'ai' && !net.active) {
+  if (cfg.mode === 'ai' && !net.active && !room) {
     if (hint.xpMul < 1) hintNote += ' Награда за партию с компьютером меньше.';
     else if (hint.xpMul > 1) hintNote += ' Награда за партию с компьютером больше.';
   }
@@ -206,11 +211,14 @@ function refreshControls() {
     : 'Думайте над ударом сколько угодно.';
   document.getElementById('levelNetNote').textContent = net.active
     ? 'Идёт игра по сети: компьютер не участвует, а условия игры задал создатель комнаты.'
-    : '';
+    : room ? `Условия задаёт зал «${room.name}». Выбрать соперника и подсказку самому можно в «Свободной игре» — она в окне «Залы».`
+      : '';
   const xpNote = document.getElementById('aiXpNote');
   if (xpNote) {
     if (cfg.mode !== 'ai') {
       xpNote.textContent = 'Вдвоём на одном устройстве очки не начисляются.';
+    } else if (room) {
+      xpNote.textContent = `${AI_LEVELS[room.level].name}. Победа: ${room.xpWin} ${plural(room.xpWin, 'очко', 'очка', 'очков')}, поражение: ${room.xpLoss}.`;
     } else if (typeof aiXpPreview === 'function') {
       const prev = aiXpPreview(cfg.level, cfg.hintLen);
       const how = hint.xpMul < 1 ? 'Подсказка снижает награду.'
@@ -264,6 +272,7 @@ function setTable(v) {
 }
 
 bindSeg('optMode', () => cfg.mode, v => {
+  if (typeof leaveRoomToFree === 'function') leaveRoomToFree();
   cfg.mode = v;
   if (net.code) {
     leaveRoom();
@@ -353,6 +362,11 @@ function toggleDrawer() {
 }
 
 function askNewGame() {
+  // Без сети «Новая партия» открывает залы: там и новая партия в том же зале, и переход в другой.
+  if (!net.active && typeof openRooms === 'function') {
+    openRooms();
+    return;
+  }
   document.getElementById('confirmNewText').textContent = net.active
     ? `Начать новый сет? У соперника он тоже начнётся заново, а цвета поменяются. Счёт комнаты ${matchLabel()} сохранится.`
     : phase === 'over' ? 'Начать новый сет?' : 'Начать новый сет? Текущая партия будет прервана и не попадёт в статистику.';

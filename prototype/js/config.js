@@ -77,6 +77,7 @@ const cfg = {
   // Насколько сжатый у борта ряд выдавливает пешки в поле (0 — только вдоль борта).
   railBuckle: 0.0015,
   mode: 'ai',
+  room: null,
   level: 2,
   hintLen: 'full',
   shotTime: 0,

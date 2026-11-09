@@ -4,13 +4,21 @@
 // Компьютер перебирает удары, проигрывает каждый в той же физике, оценивает итог тем же судьёй
 // и бьёт выбранный удар с ошибкой прицела и силы, зависящей от уровня.
 const AI_PLAYER = 1;
+// 0 и 4 — уровни для залов: 0 слабее Новичка (Дача), 4 между Любителем и Мастером (Турнир города).
+// В свободной игре выбираются только 1–3.
 const AI_LEVELS = {
+  0: { name: 'Ученик', xpWin: 6, xpLoss: 2, spots: 1, speeds: [1.6], banks: false, blind: 0.6, pick: 8,
+       robustTop: 0, robustRuns: 0, angleSigma: 4.0, powerSigma: 0.25, minThink: 500,
+       breakPowers: [0.6] },
   1: { name: 'Новичок', xpWin: 10, xpLoss: 2, spots: 1, speeds: [1.6], banks: false, blind: 0.4, pick: 5,
        robustTop: 0, robustRuns: 0, angleSigma: 2.2, powerSigma: 0.18, minThink: 500,
        breakPowers: [0.7] },
   2: { name: 'Любитель', xpWin: 20, xpLoss: 4, spots: 3, speeds: [1.4, 2.0, 3.2], banks: 'dark', blind: 0, pick: 1,
        robustTop: 6, robustRuns: 3, angleSigma: 0.4, powerSigma: 0.04, minThink: 800,
        breakPowers: [0.8, 0.95] },
+  4: { name: 'Знаток', xpWin: 30, xpLoss: 5, spots: 4, speeds: [1.2, 1.8, 2.8, 4.0], banks: 'dark', blind: 0, pick: 1,
+       robustTop: 8, robustRuns: 5, angleSigma: 0.2, powerSigma: 0.025, minThink: 900,
+       breakPowers: [0.72, 0.88, 1.0] },
   3: { name: 'Мастер', xpWin: 40, xpLoss: 6, spots: 4, speeds: [1.2, 1.8, 2.8, 4.0], banks: true, blind: 0, pick: 1,
        robustTop: 8, robustRuns: 5, angleSigma: 0.12, powerSigma: 0.018, minThink: 1000,
        breakPowers: [0.72, 0.88, 1.0] },

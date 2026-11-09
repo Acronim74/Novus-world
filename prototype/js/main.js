@@ -45,6 +45,8 @@ coarsePointer.addEventListener('change', resize);
 phonePortrait.addEventListener('change', resize);
 tabletPortrait.addEventListener('change', resize);
 resize();
+const firstVisit = typeof startFromRooms === 'function' && startFromRooms();
 refreshControls();
 newGame();
+if (firstVisit) openRooms();
 requestAnimationFrame(frame);

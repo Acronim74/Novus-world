@@ -31,6 +31,7 @@ function recordGame(winner, score) {
     mode: net.active ? 'online' : cfg.mode,
     level: cfg.level,
     ...(!net.active && cfg.mode === 'ai' ? { hint: cfg.hintLen } : {}),
+    ...(!net.active && cfg.mode === 'ai' && cfg.room ? { room: cfg.room } : {}),
     ...(net.active ? {
       seat: net.seat,
       peer: net.peerName || '',
@@ -46,6 +47,7 @@ function recordGame(winner, score) {
   saveRecords(games);
   renderRecords();
   if (typeof onGamesChanged === 'function') onGamesChanged(games);
+  if (typeof noteRoomProgress === 'function') noteRoomProgress(game);
 }
 
 function forgetGame(id) {
@@ -129,6 +131,16 @@ function renderRecords() {
   }
 
   let html = '';
+  const roomed = typeof ROOMS !== 'undefined' ? ROOMS.filter(r => ai.some(g => g.room === r.id)) : [];
+  if (roomed.length) {
+    html += '<h3>Залы</h3>' +
+      '<table class="rec"><tr><th>Зал</th><th>Игр</th><th>Побед</th><th>Пораж.</th><th>%</th><th>Пешки<br><small>вы : он</small></th></tr>' +
+      roomed.map(r => {
+        const s = summarize(ai.filter(g => g.room === r.id));
+        return `<tr><td>${r.icon} ${r.name}</td><td>${s.n}</td><td class="w">${s.win}</td><td class="l">${s.loss}</td>` +
+          `<td>${percent(s.win, s.win + s.loss)}</td><td>${s.mine} : ${s.theirs}</td></tr>`;
+      }).join('') + '</table>';
+  }
   if (ai.length) {
     const rows = [1, 2, 3].map(l => [AI_LEVELS[l].name, summarize(ai.filter(g => g.level === l))]);
     rows.push(['Всего', summarize(ai)]);
@@ -163,7 +175,9 @@ function renderRecords() {
   html += '<h3>Последние партии</h3><div class="recent">' +
     games.slice(-15).reverse().map(g => {
       const [label, cls] = RESULT_LABELS[gameResult(g)];
-      const who = g.mode === 'ai' ? AI_LEVELS[g.level]?.name ?? ''
+      const room = typeof ROOM_BY_ID !== 'undefined' ? ROOM_BY_ID[g.room] : null;
+      const who = room ? `${room.icon} ${room.name}`
+        : g.mode === 'ai' ? AI_LEVELS[g.level]?.name ?? ''
         : g.mode === 'online' ? `по сети${g.peer ? `, ${escapeHtml(g.peer)}` : ''}` : 'вдвоём';
       const score = g.mode === 'hotseat' ? `${g.score[0]} : ${g.score[1]}` : `${g.score[mySeat(g)]} : ${g.score[1 - mySeat(g)]}`;
       const xp = g.xp ? ` · +${g.xp}` : '';
