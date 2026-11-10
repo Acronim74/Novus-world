@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>Новус — прототип</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#1d2327">
+  <meta name="theme-color" content="#1b1917">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=46">
+  <link rel="stylesheet" href="style.css?v=47">
 </head>
 <body>
   <div id="app">
@@ -28,13 +28,13 @@
       </div>
 
       <div class="buttons">
-        <button id="btnOnline" class="primary">🌐 <span class="full">Играть по сети с другом</span><span class="short">По сети</span></button>
-        <button id="btnUndo" class="undo"><span class="full">Вернуть позицию до удара</span><span class="short">↶ Отмена</span></button>
+        <button id="btnOnline" class="primary"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="full">Игра по сети</span><span class="short">По сети</span></button>
+        <button id="btnUndo" class="undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span class="full">Отменить удар</span><span class="short">Отмена</span></button>
         <button id="btnReact" class="react">😊<span class="full"> Реакция сопернику</span></button>
-        <button id="btnNew">🏆<span class="full"> Залы и новая партия</span><span class="short"> Залы</span></button>
-        <button id="btnLevel">🎯<span class="full"> Сложность и время</span></button>
-        <button id="btnCabinet">👤<span class="full"> Кабинет</span></button>
-        <button id="btnDrawer">⚙<span class="full"> Настройки и журнал</span></button>
+        <button id="btnNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5c0 2.2 1.2 3.6 3.2 4M16 6h3c0 2.2-1.2 3.6-3.2 4M12 13v4M8.5 20h7M10 17h4"/></svg><span class="full">Залы и новая партия</span><span class="short">Залы</span></button>
+        <button id="btnLevel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg><span class="full">Сложность и время</span></button>
+        <button id="btnCabinet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg><span class="full">Кабинет</span></button>
+        <button id="btnDrawer"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span class="full">Настройки и журнал</span></button>
       </div>
     </aside>
 
@@ -269,7 +269,7 @@
       <button id="btnDrawerClose" title="Закрыть">✕</button>
     </div>
 
-    <button id="btnAccount">👤 Кабинет</button>
+    <button id="btnAccount"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg><span>Кабинет</span></button>
     <button id="btnInstall" hidden>📲 Установить как приложение</button>
     <div id="installNote" class="note" hidden></div>
     <details class="block">
@@ -330,24 +330,24 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=46"></script>
-  <script src="js/state.js?v=46"></script>
-  <script src="js/zones.js?v=46"></script>
-  <script src="js/shot.js?v=46"></script>
-  <script src="js/physics.js?v=46"></script>
-  <script src="js/referee.js?v=46"></script>
-  <script src="js/ai.js?v=46"></script>
-  <script src="js/records.js?v=46"></script>
-  <script src="js/trace.js?v=46"></script>
-  <script src="js/progress.js?v=46"></script>
-  <script src="js/render.js?v=46"></script>
-  <script src="js/input.js?v=46"></script>
-  <script src="js/ui.js?v=46"></script>
-  <script src="js/net-config.js?v=46"></script>
-  <script src="js/net.js?v=46"></script>
-  <script src="js/account.js?v=46"></script>
-  <script src="js/rooms.js?v=46"></script>
-  <script src="js/tutorial.js?v=46"></script>
-  <script src="js/main.js?v=46"></script>
+  <script src="js/config.js?v=47"></script>
+  <script src="js/state.js?v=47"></script>
+  <script src="js/zones.js?v=47"></script>
+  <script src="js/shot.js?v=47"></script>
+  <script src="js/physics.js?v=47"></script>
+  <script src="js/referee.js?v=47"></script>
+  <script src="js/ai.js?v=47"></script>
+  <script src="js/records.js?v=47"></script>
+  <script src="js/trace.js?v=47"></script>
+  <script src="js/progress.js?v=47"></script>
+  <script src="js/render.js?v=47"></script>
+  <script src="js/input.js?v=47"></script>
+  <script src="js/ui.js?v=47"></script>
+  <script src="js/net-config.js?v=47"></script>
+  <script src="js/net.js?v=47"></script>
+  <script src="js/account.js?v=47"></script>
+  <script src="js/rooms.js?v=47"></script>
+  <script src="js/tutorial.js?v=47"></script>
+  <script src="js/main.js?v=47"></script>
 </body>
 </html>

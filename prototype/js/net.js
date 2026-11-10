@@ -649,8 +649,8 @@ function roomLink() {
 
 function renderOnline() {
   document.getElementById('btnOnline').innerHTML = net.code
-    ? `🌐 <span class="full">Комната ${net.code}</span><span class="short">${net.code}</span>`
-    : '🌐 <span class="full">Играть по сети с другом</span><span class="short">По сети</span>';
+    ? `${ICON.globe}<span class="full">Комната ${net.code}</span><span class="short">${net.code}</span>`
+    : `${ICON.globe}<span class="full">Игра по сети</span><span class="short">По сети</span>`;
   document.getElementById('tabOnlineLabel').textContent = net.code || 'По сети';
   document.getElementById('tabOnline').classList.toggle('live', Boolean(net.code));
   document.body.classList.toggle('net', Boolean(net.code && net.peerUid));

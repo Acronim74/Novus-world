@@ -542,12 +542,12 @@ function renderAuthPane() {
 function renderAccount() {
   const name = myName() || account.user?.displayName || '';
   const btn = document.getElementById('btnAccount');
-  if (btn) btn.textContent = name ? `👤 ${name}` : '👤 Кабинет';
+  if (btn) btn.innerHTML = `${ICON.user}<span>${name ? escapeHtml(name) : 'Кабинет'}</span>`;
   const cab = document.getElementById('btnCabinet');
   if (cab) {
     cab.innerHTML = name
-      ? `👤<span class="full"> ${escapeHtml(name)}</span>`
-      : '👤<span class="full"> Кабинет</span>';
+      ? `${ICON.user}<span class="full">${escapeHtml(name)}</span>`
+      : `${ICON.user}<span class="full">Кабинет</span>`;
   }
   const note = document.getElementById('recordsCloudNote');
   if (note) {

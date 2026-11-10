@@ -369,7 +369,7 @@ function paintTable(skin) {
 
   // Зал: тёмный фон и тёплое пятно света от лампы над столом.
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#1d2327';
+  ctx.fillStyle = '#1b1917';
   ctx.fillRect(0, 0, W, H);
   const cx = view.ox + FIELD * view.s / 2;
   const cy = view.oy + FIELD * view.s / 2;
@@ -713,7 +713,7 @@ function drawPowerGauge() {
 
   if (aim.power > 0) {
     const text = `${Math.round(aim.power * 100)}%`;
-    ctx.font = `700 ${12 * d}px "Segoe UI", sans-serif`;
+    ctx.font = `700 ${12 * d}px Manrope, "Segoe UI", sans-serif`;
     const tw = ctx.measureText(text).width + 10 * d;
     const th = 18 * d;
     const ty = Math.min(top + h - th / 2, Math.max(top + th / 2, edge));
@@ -727,7 +727,7 @@ function drawPowerGauge() {
     ctx.fillText(text, x + w / 2, ty + d);
   } else if (wideGauge() && phase === 'place') {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-    ctx.font = `${14 * d}px "Segoe UI", sans-serif`;
+    ctx.font = `${14 * d}px Manrope, "Segoe UI", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (let k = 0; k < 3; k++) ctx.fillText('▼', x + w / 2, top + (14 + k * 16) * d);
@@ -772,7 +772,7 @@ function drawBottomGauge() {
   ctx.textBaseline = 'middle';
   if (aim.power > 0) {
     const text = `${Math.round(aim.power * 100)}%`;
-    ctx.font = `700 ${13 * d}px "Segoe UI", sans-serif`;
+    ctx.font = `700 ${13 * d}px Manrope, "Segoe UI", sans-serif`;
     const tw = ctx.measureText(text).width + 12 * d;
     const th = h - 8 * d;
     const tx = Math.min(x + w - tw / 2 - 4 * d, Math.max(x + tw / 2 + 4 * d, x + fill));
@@ -784,7 +784,7 @@ function drawBottomGauge() {
     ctx.fillText(text, tx, y + h / 2 + d);
   } else if (phase === 'place') {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-    ctx.font = `${13 * d}px "Segoe UI", sans-serif`;
+    ctx.font = `${13 * d}px Manrope, "Segoe UI", sans-serif`;
     ctx.fillText('Сила удара: ведите пальцем вправо ▶▶', x + w / 2, y + h / 2 + d);
   }
   ctx.restore();
@@ -792,7 +792,7 @@ function drawBottomGauge() {
 
 const TOAST_COLORS = {
   keep: 'rgba(46, 125, 50, 0.92)',
-  pass: 'rgba(55, 71, 79, 0.92)',
+  pass: 'rgba(49, 44, 38, 0.94)',
   foul: 'rgba(183, 28, 28, 0.92)',
   win: 'rgba(255, 179, 0, 0.95)',
 };
@@ -806,11 +806,11 @@ function drawToast() {
   const d = view.dpr;
   const maxW = FIELD * view.s * 0.94;
   let font = 18 * d;
-  ctx.font = `600 ${font}px "Segoe UI", sans-serif`;
+  ctx.font = `600 ${font}px Manrope, "Segoe UI", sans-serif`;
   const tw = ctx.measureText(toast.text).width;
   if (tw + 36 * d > maxW) {
     font *= (maxW - 24 * d) / tw;
-    ctx.font = `600 ${font}px "Segoe UI", sans-serif`;
+    ctx.font = `600 ${font}px Manrope, "Segoe UI", sans-serif`;
   }
   const w = Math.min(maxW, ctx.measureText(toast.text).width + 36 * d);
   const h = font + 22 * d;
@@ -821,7 +821,7 @@ function drawToast() {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, 10 * d);
   ctx.fill();
-  ctx.fillStyle = toast.cls === 'win' ? '#1d2327' : '#fff';
+  ctx.fillStyle = toast.cls === 'win' ? '#1b1917' : '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(toast.text, cx, y + h / 2 + d);
@@ -835,7 +835,7 @@ function drawBanner(text) {
   const h = 80 * view.dpr;
   ctx.fillRect(0, canvas.height / 2 - h / 2, canvas.width, h);
   ctx.fillStyle = '#fff';
-  ctx.font = `${24 * view.dpr}px "Segoe UI", sans-serif`;
+  ctx.font = `${24 * view.dpr}px Manrope, "Segoe UI", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, canvas.width / 2, canvas.height / 2);
