@@ -439,8 +439,7 @@ function paintTable(skin) {
   // Поле: светлая фанера с волокнами.
   ctx.fillStyle = feltFill;
   ctx.fillRect(0, 0, FIELD, FIELD);
-  // Крашеные поля (клубное, синее…) — то же дерево под краской: волокна едва видны.
-  woodGrain(0, 0, FIELD, FIELD, 'y', 4242, !skin || skin.felt?.id === 'birch' ? 1 : 0.45);
+  woodGrain(0, 0, FIELD, FIELD, 'y', 4242, 1);
 
   drawLines(skin?.felt?.line || '#1b1b1b');
   if (skin?.deco) drawDeco(skin.deco);

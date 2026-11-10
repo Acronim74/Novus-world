@@ -167,8 +167,8 @@ function renderRecords() {
     const draws = hot.length - red - black;
     const pawns = hot.reduce((acc, g) => [acc[0] + g.score[0], acc[1] + g.score[1]], [0, 0]);
     html += '<h3>Вдвоём</h3>' +
-      `<div class="duo"><span class="chip" style="background:${PLAYERS[0].color}"></span>Красные: <b>${red}</b> ${plural(red, 'победа', 'победы', 'побед')}` +
-      ` · <span class="chip" style="background:${PLAYERS[1].color}"></span>Чёрные: <b>${black}</b>` +
+      `<div class="duo"><span class="chip" style="background:${PLAYERS[0].color}"></span>${PLAYERS[0].name}: <b>${red}</b> ${plural(red, 'победа', 'победы', 'побед')}` +
+      ` · <span class="chip" style="background:${PLAYERS[1].color}"></span>${PLAYERS[1].name}: <b>${black}</b>` +
       `${draws ? ` · переигровок: ${draws}` : ''}<br><small>Пешки за все партии — ${pawns[0]} : ${pawns[1]}</small></div>`;
   }
 

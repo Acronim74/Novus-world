@@ -21,12 +21,13 @@ const COSMETICS = {
     { id: 'black', name: 'Чёрный лак', level: 7, from: '#2a2a2e', to: '#111114' },
     { id: 'mahogany', name: 'Красное дерево', level: 12, from: '#7a2e22', to: '#4a1510' },
   ],
+  // Поле всегда светлое: на тёмном плохо видны пешки и линии. Разметка везде тёмная.
   felts: [
     { id: 'birch', name: 'Берёза', level: 1, fill: '#efe2c4', line: '#1b1b1b' },
-    { id: 'club', name: 'Клубный', level: 2, fill: '#3d6b45', line: '#dce8c8' },
-    { id: 'navy', name: 'Синий', level: 5, fill: '#2c4a6e', line: '#d0dce8' },
-    { id: 'wine', name: 'Бордо', level: 10, fill: '#6b2a32', line: '#f0d8c8' },
-    { id: 'night', name: 'Ночной', level: 15, fill: '#1c2430', line: '#8fa0aa' },
+    { id: 'maple', name: 'Клён', level: 2, fill: '#ecd3a4', line: '#1b1b1b' },
+    { id: 'ash', name: 'Ясень', level: 5, fill: '#e4dfd3', line: '#1b1b1b' },
+    { id: 'sage', name: 'Шалфей', level: 10, fill: '#d6dec3', line: '#1b1b1b' },
+    { id: 'sky', name: 'Небесный', level: 15, fill: '#d2dde6', line: '#1b1b1b' },
   ],
   decos: [
     { id: 'none', name: 'Без украшений', level: 1 },
@@ -39,11 +40,14 @@ const COSMETICS = {
     { id: 'black', name: 'Чёрный', level: 5, tip: '#eceff1', shaft: '#212121' },
     { id: 'carbon', name: 'Карбон', level: 10, tip: '#90caf9', shaft: '#263238' },
   ],
+  // Цвета настоящих наборов пешек: красные с чёрными — классика; синие и жёлтые продаются сейчас;
+  // зелёные — как в наборах начала 90-х. Все тона достаточно плотные, чтобы читаться на светлом поле.
   pawns: [
-    { id: 'classic', name: 'Классика', level: 1, colors: ['#b8322a', '#262626'] },
-    { id: 'ivory', name: 'Бордо и кость', level: 3, colors: ['#8b1e3f', '#e8dcc8'] },
-    { id: 'ocean', name: 'Океан', level: 8, colors: ['#00838f', '#1b4332'] },
-    { id: 'gold', name: 'Золото и индиго', level: 10, colors: ['#c9a227', '#1a237e'] },
+    { id: 'classic', name: 'Красные и чёрные', level: 1, colors: ['#b8322a', '#262626'], names: ['Красные', 'Чёрные'] },
+    { id: 'green', name: 'Зелёные и чёрные', level: 3, colors: ['#27804e', '#262626'], names: ['Зелёные', 'Чёрные'] },
+    { id: 'bluered', name: 'Красные и синие', level: 5, colors: ['#b8322a', '#1f4e9a'], names: ['Красные', 'Синие'] },
+    { id: 'yellow', name: 'Жёлтые и чёрные', level: 8, colors: ['#c48a00', '#262626'], names: ['Жёлтые', 'Чёрные'] },
+    { id: 'blueyellow', name: 'Жёлтые и синие', level: 10, colors: ['#c48a00', '#1f4e9a'], names: ['Жёлтые', 'Синие'] },
   ],
   strikers: [
     { id: 'boxwood', name: 'Самшит', level: 1, from: '#e6c48f', to: '#b8874c' },
@@ -164,8 +168,14 @@ function backfillGameXp(games) {
   return changed;
 }
 
+const COSMETIC_ALIASES = {
+  felts: { club: 'maple', navy: 'ash', wine: 'sage', night: 'sky' },
+  pawns: { ivory: 'green', ocean: 'bluered', gold: 'yellow' },
+};
+
 function cosmeticById(list, id) {
-  return COSMETICS[list].find(x => x.id === id) || COSMETICS[list][0];
+  const mapped = COSMETIC_ALIASES[list]?.[id] || id;
+  return COSMETICS[list].find(x => x.id === mapped) || COSMETICS[list][0];
 }
 
 function loadoutItem(slot) {
@@ -227,6 +237,10 @@ function applyLoadout() {
   const pawns = tableSkin().pawns;
   PLAYERS[0].color = pawns.colors[0];
   PLAYERS[1].color = pawns.colors[1];
+  if (pawns.names) {
+    PLAYERS[0].name = pawns.names[0];
+    PLAYERS[1].name = pawns.names[1];
+  }
   if (typeof updatePanel === 'function') updatePanel();
 }
 
