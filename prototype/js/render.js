@@ -39,15 +39,15 @@ function drawHint(mode) {
   for (let bounce = 0; bounce <= mode.bounces; bounce++) {
     const hit = castRay(px, py, dx, dy, r);
     if (!hit.type) break;
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
     if (hit.t > left) {
-      line(px, py, px + dx * left, py + dy * left);
+      hintLine(px, py, px + dx * left, py + dy * left);
       break;
     }
     left -= hit.t;
     const hx = px + dx * hit.t;
     const hy = py + dy * hit.t;
-    line(px, py, hx, hy);
+    hintLine(px, py, hx, hy);
 
     if (hit.type === 'pocket') {
       ctx.setLineDash([]);
@@ -89,7 +89,7 @@ function drawHint(mode) {
 
 // ===== Отрисовка =====
 const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d');
+let ctx = canvas.getContext('2d');
 const view = { s: 1, ox: 0, oy: 0, dpr: 1, gauge: null };
 const coarsePointer = window.matchMedia('(pointer: coarse)');
 
@@ -185,6 +185,18 @@ function line(x0, y0, x1, y1) {
   ctx.stroke();
 }
 
+// Линия подсказки: светлый пунктир на тёмной подложке — виден и на светлой фанере, и на тёмном столе.
+function hintLine(x0, y0, x1, y1) {
+  const color = ctx.strokeStyle;
+  const width = ctx.lineWidth;
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx.lineWidth = width * 2.4;
+  line(x0, y0, x1, y1);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  line(x0, y0, x1, y1);
+}
+
 function circle(x, y, r, fill) {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -193,26 +205,12 @@ function circle(x, y, r, fill) {
 }
 
 function draw() {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#1d2327';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  applyView();
-
   const skin = typeof tableSkin === 'function' ? tableSkin() : null;
-  const rail = skin?.rail || { from: '#6b3f1f', to: '#4a2a12' };
-  const frame = ctx.createLinearGradient(-RAIL_W, -RAIL_W, FIELD + RAIL_W, FIELD + RAIL_W);
-  frame.addColorStop(0, rail.from);
-  frame.addColorStop(1, rail.to);
-  ctx.fillStyle = frame;
-  ctx.fillRect(-RAIL_W, -RAIL_W, FIELD + 2 * RAIL_W, FIELD + 2 * RAIL_W);
-
-  ctx.fillStyle = skin?.felt?.fill || '#efe2c4';
-  ctx.fillRect(0, 0, FIELD, FIELD);
-
-  drawLines(skin?.felt?.line || '#1b1b1b');
-  if (skin?.deco) drawDeco(skin.deco);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ensureTableLayer(skin);
+  ctx.drawImage(tableLayer, 0, 0);
+  applyView();
   if (phase === 'place') drawPlacementArea();
-  drawPockets();
 
   const visible = bodies.filter(b => b.state === 'table').sort((a, b) => a.z - b.z);
   for (const b of visible) drawShadow(b);
@@ -286,50 +284,330 @@ function drawPlacementArea() {
   ctx.restore();
 }
 
-function drawPockets() {
-  for (const pk of POCKETS) {
-    const g = ctx.createRadialGradient(pk.x, pk.y, POCKET_R * 0.2, pk.x, pk.y, POCKET_R);
-    g.addColorStop(0, '#000');
-    g.addColorStop(1, '#2b2b2b');
-    ctx.fillStyle = g;
-    circle(pk.x, pk.y, POCKET_R, true);
+// ===== Стол: статичный слой =====
+// Дерево, борта, лузы и свет лампы рисуются один раз и хранятся картинкой:
+// фактура дорогая, а меняется только при смене размера окна или оформления.
+const tableLayer = document.createElement('canvas');
+let tableLayerKey = '';
+
+// k > 0 — светлее, k < 0 — темнее.
+function shade(hex, k) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const ch = v => Math.round(Math.max(0, Math.min(255, k >= 0 ? v + (255 - v) * k : v * (1 + k))));
+  return `rgb(${ch(n >> 16)},${ch((n >> 8) & 255)},${ch(n & 255)})`;
+}
+
+function grainRandom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a * 1664525 + 1013904223) >>> 0;
+    return a / 4294967296;
+  };
+}
+
+// Волокна дерева: тонкие чуть волнистые линии вдоль доски.
+function woodGrain(x, y, w, h, along, seed, strength) {
+  const rnd = grainRandom(seed);
+  const len = along === 'x' ? w : h;
+  const across = along === 'x' ? h : w;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  // Широкие тональные полосы — слои шпона.
+  for (let p = 0; p < across;) {
+    const band = 18 + rnd() * 60;
+    ctx.fillStyle = rnd() < 0.5 ? `rgba(255,255,255,${0.035 * strength * rnd()})` : `rgba(60,30,0,${0.04 * strength * rnd()})`;
+    if (along === 'x') ctx.fillRect(x, y + p, w, band);
+    else ctx.fillRect(x + p, y, band, h);
+    p += band;
+  }
+  for (let p = rnd() * 3; p < across; p += 1.6 + rnd() * 4.5) {
+    const amp = 0.6 + rnd() * 2.2;
+    const wave = 120 + rnd() * 260;
+    const ph = rnd() * 6.28;
+    ctx.strokeStyle = rnd() < 0.72
+      ? `rgba(70,35,5,${(0.04 + rnd() * 0.1) * strength})`
+      : `rgba(255,250,235,${(0.05 + rnd() * 0.09) * strength})`;
+    ctx.lineWidth = 0.5 + rnd() * 0.9;
+    ctx.beginPath();
+    for (let q = 0; q <= len; q += 24) {
+      const off = p + Math.sin(q / wave * 6.28 + ph) * amp;
+      if (along === 'x') ctx.lineTo(x + q, y + off);
+      else ctx.lineTo(x + off, y + q);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function ensureTableLayer(skin) {
+  // Поворот стола входит в ключ: лузы и линии должны совпасть с фишками.
+  const key = [canvas.width, canvas.height, view.s, view.ox, view.oy, flipped() ? 1 : 0, skin?._key || ''].join('|');
+  if (key === tableLayerKey) return;
+  tableLayerKey = key;
+  tableLayer.width = canvas.width;
+  tableLayer.height = canvas.height;
+  const main = ctx;
+  ctx = tableLayer.getContext('2d');
+  try {
+    paintTable(skin);
+  } finally {
+    ctx = main;
   }
 }
 
+function paintTable(skin) {
+  const W = canvas.width;
+  const H = canvas.height;
+  const o0 = -RAIL_W;
+  const full = FIELD + 2 * RAIL_W;
+  const railSkin = skin?.rail || { from: '#6b3f1f', to: '#4a2a12' };
+  const feltFill = skin?.felt?.fill || '#efe2c4';
+
+  // Зал: тёмный фон и тёплое пятно света от лампы над столом.
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#1d2327';
+  ctx.fillRect(0, 0, W, H);
+  const cx = view.ox + FIELD * view.s / 2;
+  const cy = view.oy + FIELD * view.s / 2;
+  const glow = ctx.createRadialGradient(cx, cy, FIELD * view.s * 0.3, cx, cy, FIELD * view.s * 0.95);
+  glow.addColorStop(0, 'rgba(255,196,120,0.16)');
+  glow.addColorStop(1, 'rgba(255,196,120,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.setTransform(view.s, 0, 0, view.s, view.ox, view.oy);
+
+  // Тень стола на полу — в экранных координатах, чтобы не уезжала вверх при повороте.
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 26 * view.s;
+  ctx.shadowOffsetY = 10 * view.s;
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.roundRect(o0, o0, full, full, 10);
+  ctx.fill();
+  ctx.restore();
+
+  applyView();
+
+  // Рама: четыре доски со стыком «на ус».
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(o0, o0, full, full, 10);
+  ctx.clip();
+  const o1 = FIELD + RAIL_W;
+  const boards = [
+    { pts: [[o0, o0], [o1, o0], [FIELD, 0], [0, 0]], along: 'x', box: [o0, o0, full, RAIL_W], g: [0, o0, 0, 0], light: 0.1 },
+    { pts: [[o0, o1], [o1, o1], [FIELD, FIELD], [0, FIELD]], along: 'x', box: [o0, FIELD, full, RAIL_W], g: [0, o1, 0, FIELD], light: -0.16 },
+    { pts: [[o0, o0], [0, 0], [0, FIELD], [o0, o1]], along: 'y', box: [o0, o0, RAIL_W, full], g: [o0, 0, 0, 0], light: 0.03 },
+    { pts: [[o1, o0], [FIELD, 0], [FIELD, FIELD], [o1, o1]], along: 'y', box: [FIELD, o0, RAIL_W, full], g: [o1, 0, FIELD, 0], light: -0.1 },
+  ];
+  if (flipped()) {
+    const swap = (i, j) => { const t = boards[i].light; boards[i].light = boards[j].light; boards[j].light = t; };
+    swap(0, 1);
+    swap(2, 3);
+  }
+  boards.forEach((b, i) => {
+    ctx.save();
+    ctx.beginPath();
+    b.pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.clip();
+    // Поперёк доски: скруглённая кромка — светлее сверху, темнее у поля.
+    const g = ctx.createLinearGradient(...b.g);
+    g.addColorStop(0, shade(railSkin.to, -0.1));
+    g.addColorStop(0.18, shade(railSkin.from, 0.16));
+    g.addColorStop(0.6, railSkin.from);
+    g.addColorStop(1, railSkin.to);
+    ctx.fillStyle = g;
+    ctx.fillRect(...b.box);
+    woodGrain(...b.box, b.along, 9100 + i * 77, 1.5);
+    ctx.fillStyle = b.light > 0 ? `rgba(255,235,200,${b.light})` : `rgba(0,0,0,${-b.light})`;
+    ctx.fillRect(...b.box);
+    ctx.restore();
+  });
+  // Стыки досок в углах.
+  ctx.strokeStyle = 'rgba(0,0,0,0.38)';
+  ctx.lineWidth = 1.2;
+  for (const [x0, y0, x1, y1] of [[o0, o0, 0, 0], [o1, o0, FIELD, 0], [o0, o1, 0, FIELD], [o1, o1, FIELD, FIELD]]) line(x0, y0, x1, y1);
+  ctx.restore();
+
+  // Поле: светлая фанера с волокнами.
+  ctx.fillStyle = feltFill;
+  ctx.fillRect(0, 0, FIELD, FIELD);
+  // Крашеные поля (клубное, синее…) — то же дерево под краской: волокна едва видны.
+  woodGrain(0, 0, FIELD, FIELD, 'y', 4242, !skin || skin.felt?.id === 'birch' ? 1 : 0.45);
+
+  drawLines(skin?.felt?.line || '#1b1b1b');
+  if (skin?.deco) drawDeco(skin.deco);
+
+  // Свет лампы: центр поля светлее, углы уходят в тень.
+  const lamp = ctx.createRadialGradient(FIELD / 2, FIELD / 2, FIELD * 0.15, FIELD / 2, FIELD / 2, FIELD * 0.78);
+  lamp.addColorStop(0, 'rgba(255,246,222,0.14)');
+  lamp.addColorStop(0.55, 'rgba(255,246,222,0)');
+  lamp.addColorStop(1, 'rgba(40,20,0,0.2)');
+  ctx.fillStyle = lamp;
+  ctx.fillRect(0, 0, FIELD, FIELD);
+
+  // Борт выше поля: он отбрасывает на поле тень.
+  const edgeShadow = (x0, y0, x1, y1, rect, a) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, `rgba(0,0,0,${a})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(...rect);
+  };
+  const turn = flipped();
+  edgeShadow(0, 0, 0, 20, [0, 0, FIELD, 20], turn ? 0.16 : 0.34);
+  edgeShadow(0, 0, 16, 0, [0, 0, 16, FIELD], turn ? 0.16 : 0.26);
+  edgeShadow(0, FIELD, 0, FIELD - 8, [0, FIELD - 8, FIELD, 8], turn ? 0.34 : 0.16);
+  edgeShadow(FIELD, 0, FIELD - 8, 0, [FIELD - 8, 0, 8, FIELD], turn ? 0.26 : 0.16);
+  // Кромка борта у поля.
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1.4;
+  ctx.strokeRect(0, 0, FIELD, FIELD);
+  ctx.strokeStyle = 'rgba(255,225,180,0.2)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-2.5, -2.5, FIELD + 5, FIELD + 5);
+
+  drawPockets();
+}
+
+function drawPockets() {
+  const sgn = lightSign();
+  for (const pk of POCKETS) {
+    // Фаска вокруг отверстия.
+    const rim = ctx.createLinearGradient(
+      pk.x - POCKET_R * sgn, pk.y - POCKET_R * sgn,
+      pk.x + POCKET_R * sgn, pk.y + POCKET_R * sgn
+    );
+    rim.addColorStop(0, 'rgba(60,30,5,0.55)');
+    rim.addColorStop(1, 'rgba(255,240,210,0.5)');
+    ctx.strokeStyle = rim;
+    ctx.lineWidth = 3;
+    circle(pk.x, pk.y, POCKET_R + 1, false);
+
+    const g = ctx.createRadialGradient(pk.x + 5 * sgn, pk.y + 8 * sgn, POCKET_R * 0.1, pk.x, pk.y, POCKET_R);
+    g.addColorStop(0, '#000');
+    g.addColorStop(0.7, '#0b0907');
+    g.addColorStop(1, '#2a1f15');
+    ctx.fillStyle = g;
+    circle(pk.x, pk.y, POCKET_R, true);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(pk.x, pk.y, POCKET_R - 1, 0, Math.PI * 2);
+    ctx.clip();
+    // Сетка лузы.
+    ctx.strokeStyle = 'rgba(255,235,200,0.07)';
+    ctx.lineWidth = 1;
+    for (let d = -POCKET_R * 2; d <= POCKET_R * 2; d += 11) {
+      line(pk.x + d - POCKET_R, pk.y - POCKET_R, pk.x + d + POCKET_R, pk.y + POCKET_R);
+      line(pk.x + d + POCKET_R, pk.y - POCKET_R, pk.x + d - POCKET_R, pk.y + POCKET_R);
+    }
+    // Стенка отверстия: дальняя от света сторона освещена, ближняя в тени.
+    const lit = sgn > 0 ? Math.PI * 0.08 : Math.PI * 1.08;
+    ctx.strokeStyle = 'rgba(255,215,160,0.2)';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(pk.x, pk.y, POCKET_R - 3, lit, lit + Math.PI * 0.54);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 12;
+    ctx.beginPath();
+    ctx.arc(pk.x, pk.y, POCKET_R - 4, lit + Math.PI, lit + Math.PI * 1.6);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// Свет падает сверху слева на экране; при повороте стола направление переворачивается.
+function lightSign() {
+  return flipped() ? -1 : 1;
+}
+
 function drawShadow(b) {
-  const off = 1.5 + b.z * 0.5;
-  ctx.fillStyle = `rgba(0,0,0,${Math.max(0.12, 0.3 - b.z / 200)})`;
-  circle(b.x + off * 0.6, b.y + off, b.r, true);
+  const sgn = lightSign();
+  const off = 2.5 + b.z * 0.55;
+  const x = b.x + off * 0.55 * sgn;
+  const y = b.y + off * sgn;
+  const spread = 3 + b.z * 0.12;
+  const g = ctx.createRadialGradient(x, y, b.r * 0.55, x, y, b.r + spread);
+  g.addColorStop(0, `rgba(0,0,0,${Math.max(0.16, 0.42 - b.z / 160)})`);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  circle(x, y, b.r + spread, true);
+}
+
+function ring(r0, r1) {
+  ctx.beginPath();
+  ctx.arc(0, 0, r1, 0, Math.PI * 2);
+  ctx.arc(0, 0, r0, 0, Math.PI * 2, true);
 }
 
 function drawPuck(b) {
   const lift = (1 + b.z / 120) * (1 - b.sink / 40);
+  const sgn = lightSign();
+  const striker_ = b.kind === 'striker';
   ctx.save();
   ctx.translate(b.x, b.y);
   ctx.scale(lift, lift);
 
-  let fill;
-  if (b.kind === 'striker') {
+  let base;
+  let dark;
+  if (striker_) {
     const strikerSkin = typeof tableSkin === 'function' ? tableSkin().striker : null;
-    fill = ctx.createRadialGradient(-b.r * 0.3, -b.r * 0.3, 2, 0, 0, b.r);
-    fill.addColorStop(0, strikerSkin?.from || '#e6c48f');
-    fill.addColorStop(1, strikerSkin?.to || '#b8874c');
+    base = strikerSkin?.from || '#e6c48f';
+    dark = strikerSkin?.to || '#b8874c';
   } else {
-    fill = PLAYERS[b.owner].color;
+    base = PLAYERS[b.owner].color;
+    dark = shade(base, -0.42);
   }
+  const lx = -b.r * 0.4 * sgn;
+  const ly = -b.r * 0.45 * sgn;
+
   // Сквозное отверстие видно насквозь — по нему игрок проверяет, видна ли линия.
-  ctx.beginPath();
-  ctx.arc(0, 0, b.r, 0, Math.PI * 2);
-  ctx.arc(0, 0, b.hole, 0, Math.PI * 2, true);
-  ctx.fillStyle = fill;
+  // Скошенный край фишки.
+  const edge = ctx.createRadialGradient(lx, ly, b.r * 0.2, 0, 0, b.r);
+  edge.addColorStop(0, shade(base, 0.3));
+  edge.addColorStop(0.75, base);
+  edge.addColorStop(1, dark);
+  ctx.fillStyle = edge;
+  ring(b.hole, b.r);
   ctx.fill();
 
-  ctx.lineWidth = Math.max(0.8, px1());
+  // Верхняя площадка чуть светлее со стороны лампы.
+  const top = ctx.createLinearGradient(lx, ly, -lx, -ly);
+  top.addColorStop(0, shade(base, striker_ ? 0.18 : 0.22));
+  top.addColorStop(1, shade(base, -0.12));
+  ctx.fillStyle = top;
+  ring(b.hole, b.r * 0.8);
+  ctx.fill();
+
+  ctx.lineWidth = Math.max(0.7, px1());
   ctx.strokeStyle = 'rgba(0,0,0,0.55)';
   circle(0, 0, b.r, false);
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  circle(0, 0, b.r * 0.8, false);
+  if (b.r * 0.5 > b.hole + 1) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    circle(0, 0, b.r * 0.5, false);
+  }
+  // Стенка отверстия.
+  ctx.strokeStyle = 'rgba(0,0,0,0.65)';
   circle(0, 0, b.hole, false);
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-  circle(0, 0, b.r * 0.7, false);
+  // Блик на кромке.
+  ctx.strokeStyle = striker_ ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = Math.max(1, px1() * 1.2);
+  ctx.lineCap = 'round';
+  const a0 = sgn > 0 ? Math.PI * 1.08 : Math.PI * 0.08;
+  ctx.beginPath();
+  ctx.arc(0, 0, b.r * 0.9, a0, a0 + Math.PI * 0.34);
+  ctx.stroke();
   ctx.restore();
 
   if (phase === 'place' && b.kind === 'pawn' && b.owner === current && isDark(b)) {
@@ -354,20 +632,42 @@ function drawCue() {
   const tipX = striker.x - aim.dirX * gap;
   const tipY = striker.y - aim.dirY * gap;
   const len = 700;
-  const endX = tipX - aim.dirX * len;
-  const endY = tipY - aim.dirY * len;
-  ctx.save();
-  ctx.lineCap = 'round';
   const cue = typeof tableSkin === 'function' ? tableSkin().cue : null;
-  const g = ctx.createLinearGradient(tipX, tipY, endX, endY);
+  const nx = -aim.dirY;
+  const ny = aim.dirX;
+  const sgn = lightSign();
+  // Участок кия от d0 до d1 (от наконечника), сужение от 3,2 до 6,5 мм полуширины.
+  const part = (d0, d1, fill, ox = 0, oy = 0) => {
+    const w0 = 3.2 + 3.3 * d0 / len;
+    const w1 = 3.2 + 3.3 * d1 / len;
+    const ax = tipX - aim.dirX * d0 + ox;
+    const ay = tipY - aim.dirY * d0 + oy;
+    const bx = tipX - aim.dirX * d1 + ox;
+    const by = tipY - aim.dirY * d1 + oy;
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.moveTo(ax + nx * w0, ay + ny * w0);
+    ctx.lineTo(bx + nx * w1, by + ny * w1);
+    ctx.lineTo(bx - nx * w1, by - ny * w1);
+    ctx.lineTo(ax - nx * w0, ay - ny * w0);
+    ctx.closePath();
+    ctx.fill();
+  };
+  ctx.save();
+  part(0, len, 'rgba(0,0,0,0.28)', 4 * sgn, 6 * sgn);
+  const g = ctx.createLinearGradient(tipX, tipY, tipX - aim.dirX * len, tipY - aim.dirY * len);
   g.addColorStop(0, cue?.tip || '#f3dfb7');
-  g.addColorStop(1, cue?.shaft || '#8d5a2b');
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-  ctx.lineWidth = 9;
-  line(tipX + 4, tipY + 5, endX + 4, endY + 5);
-  ctx.strokeStyle = g;
-  ctx.lineWidth = 8;
-  line(tipX, tipY, endX, endY);
+  g.addColorStop(0.55, cue?.shaft || '#8d5a2b');
+  g.addColorStop(1, shade(cue?.shaft || '#8d5a2b', -0.35));
+  part(0, len, g);
+  // Блик вдоль кия со стороны света.
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1.2;
+  const hx = (nx * -sgn * (ny > 0 ? 1 : -1)) * 1.6;
+  const hy = (ny * -sgn * (ny > 0 ? 1 : -1)) * 1.6;
+  line(tipX + hx - aim.dirX * 24, tipY + hy - aim.dirY * 24, tipX + hx - aim.dirX * len, tipY + hy - aim.dirY * len);
+  part(5, 22, '#f4efe4');
+  part(0, 5, '#3f5f8a');
   ctx.restore();
 }
 
