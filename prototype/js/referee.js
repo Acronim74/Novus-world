@@ -294,11 +294,17 @@ function endShot() {
     startTurn();
     return;
   } else if (left[0] === 0 || left[1] === 0) {
-    winner = left[0] === 0 ? 0 : 1;
-    const unanswered = winner === firstShooter && !lostTurn[firstShooter];
-    winnerText = unanswered
-      ? `${PLAYERS[winner].name} выиграли сет: соперник не ответил первой серией (п. 20.4)`
-      : `${PLAYERS[winner].name} выиграли сет!`;
+    const leader = left[0] === 0 ? 0 : 1;
+    const other = 1 - leader;
+    // п. 20.4: пустой стол первого бьющего — не победа, пока соперник продолжает свою первую серию.
+    const waitingReply = leader === firstShooter && !lostTurn[firstShooter] && p === other && keepTurn && left[other] > 0;
+    if (!waitingReply) {
+      winner = leader;
+      const unanswered = winner === firstShooter && !lostTurn[firstShooter];
+      winnerText = unanswered
+        ? `${PLAYERS[winner].name} выиграли сет: соперник не ответил первой серией (п. 20.4)`
+        : `${PLAYERS[winner].name} выиграли сет!`;
+    }
   }
 
   if (typeof finishTraceShot === 'function') {
