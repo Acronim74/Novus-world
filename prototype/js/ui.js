@@ -199,8 +199,8 @@ function refreshControls() {
   for (const refresh of segRefreshers) refresh();
   const room = typeof currentRoom === 'function' ? currentRoom() : null;
   document.getElementById('groupLevel').classList.toggle('dim', cfg.mode !== 'ai' || net.active);
-  // В комнате и в зале режим соперника не меняют: иначе партия сносится или сбрасывается зал.
-  document.getElementById('groupMode').classList.toggle('locked', Boolean(net.code || room));
+  // В зале и по сети «вдвоём» здесь не предлагаем: это выкидывало из зала без предупреждения.
+  document.getElementById('groupMode').hidden = Boolean(room || net.code);
   // В сетевой партии условия общие: текущий сет уже идёт по ним, новые — только по согласию и со следующей партии.
   for (const id of ['groupTable', 'groupHint', 'groupTime']) document.getElementById(id).classList.toggle('locked', net.active);
   // В зале соперника, подсказку и стол задаёт зал — здесь их только показывают.
@@ -298,10 +298,14 @@ bindSeg('optMode', () => cfg.mode, v => {
   }
 });
 bindSeg('optLevel', () => cfg.level, v => {
+  if (typeof currentRoom === 'function' && currentRoom()) return;
   cfg.level = Number(v);
   updatePanel();
 });
-bindSeg('optHintLen', () => cfg.hintLen, v => { cfg.hintLen = v; });
+bindSeg('optHintLen', () => cfg.hintLen, v => {
+  if (typeof currentRoom === 'function' && currentRoom()) return;
+  cfg.hintLen = v;
+});
 bindSeg('optShotTime', () => cfg.shotTime, v => {
   cfg.shotTime = Number(v);
   if (phase === 'place' || phase === 'remote') resetTurnTimer();
@@ -320,7 +324,10 @@ const muPawnInput = document.getElementById('optMuPawn');
 bindRange('optMuStriker', () => cfg.muStriker, v => { cfg.muStriker = v; });
 bindRange('optMuPawn', () => cfg.muPawn, v => { cfg.muPawn = v; });
 bindRange('optPuckE', () => cfg.puckE, v => { cfg.puckE = v; });
-bindSeg('optTable', () => cfg.table, setTable);
+bindSeg('optTable', () => cfg.table, v => {
+  if (typeof currentRoom === 'function' && currentRoom()) return;
+  setTable(v);
+});
 bindRange('optRailE', () => cfg.railE, v => { cfg.railE = v; });
 bindRange('optVMax', () => cfg.vMax, v => { cfg.vMax = v; });
 bindRange('optClimbPawn', () => cfg.climbThr.pawn, v => { cfg.climbThr.pawn = v; });
