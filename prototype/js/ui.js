@@ -364,10 +364,36 @@ function overlayOpen() {
   return !drawer.classList.contains('closed') || Boolean(document.querySelector('.modal:not(.closed)'));
 }
 
+let overlayQuietUntil = 0;
+function hushOverlays(ms = 600) {
+  overlayQuietUntil = performance.now() + ms;
+}
+
+function closeTopOverlay() {
+  const open = [...document.querySelectorAll('.modal:not(.closed)')];
+  if (open.length) {
+    hushOverlays();
+    open[open.length - 1].classList.add('closed');
+    return true;
+  }
+  if (!drawer.classList.contains('closed')) {
+    closeDrawer();
+    return true;
+  }
+  return false;
+}
+
 for (const modal of document.querySelectorAll('.modal')) {
   modal.addEventListener('click', e => {
-    if (e.target.closest('.close')) modal.classList.add('closed');
-    else if (e.target === modal && modal.id !== 'ruleOffer' && modal.id !== 'playInvite' && modal.id !== 'friendAsk') modal.classList.add('closed');
+    if (performance.now() < overlayQuietUntil) return;
+    if (e.target.closest('.close')) {
+      hushOverlays();
+      modal.classList.add('closed');
+    } else if (e.target === modal && modal.id !== 'ruleOffer' && modal.id !== 'playInvite' && modal.id !== 'friendAsk') {
+      if (modal.id === 'online' && !document.getElementById('roomRules')?.classList.contains('closed')) return;
+      hushOverlays();
+      modal.classList.add('closed');
+    }
   });
 }
 
@@ -442,6 +468,32 @@ window.addEventListener('appinstalled', () => {
 });
 // В Safari на iPhone и iPad своего окна установки нет — только через меню «Поделиться».
 if (!installed && /iPhone|iPad|iPod/.test(navigator.userAgent)) btnInstall.hidden = false;
+
+function appStandalone() {
+  return matchMedia('(display-mode: standalone)').matches
+    || matchMedia('(display-mode: fullscreen)').matches
+    || navigator.standalone === true;
+}
+
+function setAppUrl(href) {
+  try {
+    history.replaceState(history.state && typeof history.state === 'object' ? history.state : { novus: 1 }, '', href);
+  } catch {
+    // старые WebView не дают менять адрес
+  }
+}
+
+function trapAppHistory() {
+  if (!appStandalone()) return;
+  const hold = () => {
+    try { history.pushState({ novus: 1 }, '', location.href); } catch { /* */ }
+  };
+  if (!history.state?.novus) hold();
+  window.addEventListener('popstate', () => {
+    closeTopOverlay();
+    hold();
+  });
+}
 
 btnInstall.addEventListener('click', async () => {
   if (!installPrompt) {

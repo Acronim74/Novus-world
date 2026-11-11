@@ -248,15 +248,24 @@ function myName() {
 // ----- Комната -----
 async function createRoom(rules) {
   const db = await netBackend();
+  if (typeof firebase !== 'undefined' && firebase.auth?.().currentUser) {
+    net.uid = firebase.auth().currentUser.uid;
+  }
+  if (!net.uid) throw new Error('Нет связи с сервером. Проверьте интернет и откройте игру ещё раз.');
+  let lastErr = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomCode();
-    if (await db.get(`rooms/${code}/players`)) continue;
-    await db.update(`rooms/${code}`, { 'players/host': net.uid, created: Date.now() });
-    // Отдельной записью: правила базы пускают в комнату только после того, как хозяин записан.
-    await db.set(`rooms/${code}/rules`, rules);
-    return enterRoom(code, 'host');
+    try {
+      if (await db.get(`rooms/${code}/players`)) continue;
+      await db.update(`rooms/${code}`, { 'players/host': net.uid, created: Date.now() });
+      // Отдельной записью: правила базы пускают в комнату только после того, как хозяин записан.
+      await db.set(`rooms/${code}/rules`, rules);
+      return enterRoom(code, 'host');
+    } catch (e) {
+      lastErr = e;
+    }
   }
-  throw new Error('Не удалось создать комнату, попробуйте ещё раз.');
+  throw lastErr || new Error('Не удалось создать комнату. Проверьте интернет и попробуйте ещё раз.');
 }
 
 async function joinRoom(rawCode) {
@@ -281,9 +290,11 @@ function enterRoom(code, role) {
   net.match = {};
   net.matchCounted = 0;
   net.cleanupArmed = null;
-  history.replaceState(null, '', `${location.pathname}?${new URLSearchParams({
+  const roomUrl = `${location.pathname}?${new URLSearchParams({
     ...Object.fromEntries(new URLSearchParams(location.search)), room: code,
-  })}`);
+  })}`;
+  if (typeof setAppUrl === 'function') setAppUrl(roomUrl);
+  else history.replaceState(history.state, '', roomUrl);
   if (myName()) db.set(roomPath(`names/${net.uid}`), myName());
   net.savedRules ??= currentRules();
 
@@ -420,7 +431,9 @@ function leaveRoom() {
   net.savedRules = null;
   const params = new URLSearchParams(location.search);
   params.delete('room');
-  history.replaceState(null, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
+  const leaveUrl = `${location.pathname}${params.size ? `?${params}` : ''}`;
+  if (typeof setAppUrl === 'function') setAppUrl(leaveUrl);
+  else history.replaceState(history.state, '', leaveUrl);
   renderOnline();
   newGame();
 }
@@ -1015,12 +1028,21 @@ for (const box of rulesDialog.querySelectorAll('input[data-key]')) {
   });
 }
 document.getElementById('btnRulesOk').addEventListener('click', () => {
-  rulesDialog.classList.add('closed');
-  const rules = { ...rulesDraft };
-  if (rulesMode === 'edit') runOnline(() => proposeRoomRules(rules));
-  else runOnline(async () => {
-    await createRoom(rules);
-    if (typeof afterRoomCreated === 'function') await afterRoomCreated();
+  if (typeof hushOverlays === 'function') hushOverlays();
+  const rules = { ...(rulesDraft || currentRules()) };
+  if (rulesMode === 'edit') {
+    rulesDialog.classList.add('closed');
+    runOnline(() => proposeRoomRules(rules));
+    return;
+  }
+  runOnline(async () => {
+    try {
+      await createRoom(rules);
+      if (typeof afterRoomCreated === 'function') await afterRoomCreated();
+    } finally {
+      rulesDialog.classList.add('closed');
+      openOnline();
+    }
   });
 });
 document.getElementById('btnRuleAccept').addEventListener('click', () => runOnline(acceptRuleOffer));

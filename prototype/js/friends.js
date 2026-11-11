@@ -630,7 +630,9 @@ if (addFromUrl) {
   try { sessionStorage.setItem('novus.addFriend', addFromUrl); } catch { /* нет хранилища */ }
   const u = new URL(location.href);
   u.searchParams.delete('add');
-  history.replaceState(null, '', `${u.pathname}${u.search}${u.hash}`);
+  const addUrl = `${u.pathname}${u.search}${u.hash}`;
+  if (typeof setAppUrl === 'function') setAppUrl(addUrl);
+  else history.replaceState(history.state, '', addUrl);
 } else {
   try { friends.pendingAdd = sessionStorage.getItem('novus.addFriend') || ''; } catch { /* нет хранилища */ }
 }

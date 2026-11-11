@@ -58,3 +58,4 @@ if (firstVisit) {
   }
 }
 requestAnimationFrame(frame);
+if (typeof trapAppHistory === 'function') trapAppHistory();
