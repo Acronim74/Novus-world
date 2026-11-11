@@ -6,21 +6,21 @@
 const ROOMS_KEY = 'novus.rooms.v1';
 
 const ROOMS = [
-  { id: 'dacha', name: 'Дача', icon: '🏡', level: 0, hint: 'full', table: 'normal', need: 0, xpWin: 6, xpLoss: 2, undo: true,
-    note: 'Учимся: подсказка показывает весь путь, соперник сам ещё учится, удар можно отменить.' },
-  { id: 'yard', name: 'Двор', icon: '🌳', level: 1, hint: 'mid', table: 'worn', need: 2, xpWin: 12, xpLoss: 3,
-    note: 'Подсказка до первого касания. Порошок стёрся — бить нужно сильнее.' },
-  { id: 'club', name: 'Клуб', icon: '🎱', level: 2, hint: 'short', table: 'normal', need: 2, xpWin: 24, xpLoss: 5,
-    note: 'Только направление удара. Соперник считает удары и бьёт точно.' },
-  { id: 'city', name: 'Турнир города', icon: '🏙', level: 4, hint: 'short', table: 'fresh', need: 3, xpWin: 40, xpLoss: 7,
-    note: 'Свежая натирка: всё катится далеко. Соперник почти мастер.' },
-  { id: 'grand', name: 'Большой чемпионат', icon: '🏆', level: 3, hint: 'off', table: 'random', need: 3, xpWin: 70, xpLoss: 10,
-    note: 'Без подсказки, как за настоящим столом. Натирка каждый раз своя.' },
+  { id: 'dacha', name: 'Дача', icon: '🏡', level: 0, hint: 'full', table: 'normal', need: 0, xpWin: 6, xpLoss: 2, undo: true, zoneReturn: false,
+    note: 'Учимся: подсказка показывает весь путь, соперник сам ещё учится, удар можно отменить. Возврат шайбы в свою зону серию ещё не обрывает.' },
+  { id: 'yard', name: 'Двор', icon: '🌳', level: 1, hint: 'mid', table: 'worn', need: 2, xpWin: 12, xpLoss: 3, zoneReturn: false,
+    note: 'Подсказка до первого касания. Порошок стёрся — бить нужно сильнее. Возврат шайбы в свою зону пока разрешён.' },
+  { id: 'club', name: 'Клуб', icon: '🎱', level: 2, hint: 'short', table: 'normal', need: 2, xpWin: 24, xpLoss: 5, zoneReturn: true,
+    note: 'Только направление удара. Соперник считает удары и бьёт точно. Если шайба вернулась в свою зону — ход переходит, даже когда пешка забита (п. 18.1.5).' },
+  { id: 'city', name: 'Турнир города', icon: '🏙', level: 4, hint: 'short', table: 'fresh', need: 3, xpWin: 40, xpLoss: 7, zoneReturn: true,
+    note: 'Свежая натирка: всё катится далеко. Соперник почти мастер. Шайба в свою зону отдаёт ход (п. 18.1.5).' },
+  { id: 'grand', name: 'Большой чемпионат', icon: '🏆', level: 3, hint: 'off', table: 'random', need: 3, xpWin: 70, xpLoss: 10, zoneReturn: true,
+    note: 'Без подсказки, как за настоящим столом. Натирка каждый раз своя. Шайба в свою зону отдаёт ход (п. 18.1.5).' },
 ];
 const ROOM_BY_ID = Object.fromEntries(ROOMS.map(r => [r.id, r]));
 
 // Свободная игра помнит свои настройки отдельно от залов.
-const FREE_DEFAULT = { level: 2, hint: 'full', table: 'normal' };
+const FREE_DEFAULT = { level: 2, hint: 'full', table: 'normal', zoneReturn: false };
 
 const rooms = {
   last: null, // id зала, 'free' или null — ещё не выбирал (первый вход)
@@ -84,12 +84,15 @@ function applyRoom() {
   if (!room) return;
   cfg.level = room.level;
   cfg.hintLen = room.hint;
+  cfg.zoneReturn = Boolean(room.zoneReturn);
   setTable(room.table === 'random' ? randomTable() : room.table);
+  const zoneBox = document.getElementById('optZoneReturn');
+  if (zoneBox) zoneBox.checked = cfg.zoneReturn;
 }
 
 function rememberFree() {
   if (cfg.room || cfg.mode !== 'ai') return;
-  rooms.free = { level: cfg.level, hint: cfg.hintLen, table: cfg.table };
+  rooms.free = { level: cfg.level, hint: cfg.hintLen, table: cfg.table, zoneReturn: cfg.zoneReturn };
 }
 
 function enterHall(id) {
@@ -102,6 +105,7 @@ function enterHall(id) {
     cfg.level = AI_LEVELS[f.level] && f.level >= 1 && f.level <= 3 ? f.level : FREE_DEFAULT.level;
     if (HINT_MODES[f.hint]) cfg.hintLen = f.hint;
     if (TABLE_STATES[f.table]) setTable(f.table);
+    cfg.zoneReturn = Boolean(f.zoneReturn);
   } else if (id === 'hotseat') {
     cfg.room = null;
     cfg.mode = 'hotseat';
@@ -124,6 +128,7 @@ function leaveRoomToFree() {
   if (!cfg.room) return;
   cfg.room = null;
   if (!(cfg.level >= 1 && cfg.level <= 3)) cfg.level = rooms.free.level >= 1 && rooms.free.level <= 3 ? rooms.free.level : FREE_DEFAULT.level;
+  cfg.zoneReturn = Boolean(rooms.free.zoneReturn);
   rooms.last = 'free';
   saveRooms();
 }
@@ -221,7 +226,8 @@ function renderRooms() {
       `<div class="rc-body"><h3>${room.name}</h3>` +
       '<div class="rc-chips">' +
       `<span>${AI_LEVELS[room.level].name}</span><span>${HINT_SHORT[room.hint]}</span>` +
-      `<span>${room.table === 'random' ? 'натирка случайная' : TABLE_STATES[room.table].name.toLowerCase()}</span></div>` +
+      `<span>${room.table === 'random' ? 'натирка случайная' : TABLE_STATES[room.table].name.toLowerCase()}</span>` +
+      (room.zoneReturn ? '<span>биток не в свою зону</span>' : '') + '</div>' +
       `<p>${room.note}</p>${progress}</div>` +
       `<div class="rc-foot"><div class="rc-xp"><b>+${room.xpWin}</b> за победу<br><b>+${room.xpLoss}</b> за поражение</div>` +
       `<div class="rc-actions">${isOpen ? actions(room.id) : '<button disabled>Закрыт</button>'}</div></div>` +
@@ -391,6 +397,7 @@ function startFromRooms() {
     if (f.level >= 1 && f.level <= 3) cfg.level = f.level;
     if (HINT_MODES[f.hint]) cfg.hintLen = f.hint;
     if (TABLE_STATES[f.table]) setTable(f.table);
+    cfg.zoneReturn = Boolean(f.zoneReturn);
   } else {
     // Первый вход: сразу ставим Дачу, а поверх стола показываем залы.
     cfg.room = ROOMS[0].id;

@@ -156,6 +156,10 @@ function bindCheck(id, key, after) {
   const el = document.getElementById(id);
   el.checked = cfg[key];
   el.addEventListener('change', () => {
+    if (el.disabled) {
+      el.checked = cfg[key];
+      return;
+    }
     cfg[key] = el.checked;
     after?.();
   });
@@ -206,7 +210,10 @@ function refreshControls() {
   // В зале соперника, подсказку и стол задаёт зал — здесь их только показывают.
   for (const id of ['groupLevel', 'groupTable', 'groupHint']) if (room) document.getElementById(id).classList.add('locked');
   if (!room && !net.active) document.getElementById('groupLevel').classList.remove('locked');
-  for (const id of ['optCircleDark', 'optFree', 'optZoneReturn']) document.getElementById(id).disabled = net.active;
+  for (const id of ['optCircleDark', 'optFree']) document.getElementById(id).disabled = net.active;
+  const zoneBox = document.getElementById('optZoneReturn');
+  zoneBox.checked = cfg.zoneReturn;
+  zoneBox.disabled = net.active || Boolean(room);
   document.getElementById('tableNote').textContent = TABLE_STATES[cfg.table].note;
   const hint = HINT_MODES[cfg.hintLen];
   let hintNote = hint.note;
