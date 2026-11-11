@@ -33,10 +33,16 @@
         "public": {
           ".read": "auth != null"
         },
+        "friends": {
+          "$fid": {
+            ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && auth.uid === $fid && ((!data.exists() && newData.exists() && root.child('users').child(auth.uid).child('inbox').child($uid).child('kind').val() === 'friend') || (data.exists() && !newData.exists()))",
+            ".validate": "newData.hasChildren(['at', 'name']) && newData.child('at').isNumber() && newData.child('name').isString() && newData.child('name').val().length <= 20"
+          }
+        },
         "inbox": {
           "$from": {
-            ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && $from === auth.uid && newData.exists() && newData.child('from').val() === auth.uid",
-            ".validate": "newData.hasChildren(['from', 'name', 'room', 'at']) && newData.child('from').isString() && newData.child('name').isString() && newData.child('name').val().length <= 20 && newData.child('room').isString() && newData.child('room').val().length >= 4 && newData.child('room').val().length <= 8 && newData.child('at').isNumber()"
+            ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && $from === auth.uid && ((!newData.exists() && data.child('from').val() === auth.uid) || (newData.exists() && newData.child('from').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['from', 'name', 'at', 'kind']) && newData.child('from').isString() && newData.child('name').isString() && newData.child('name').val().length <= 20 && newData.child('at').isNumber() && (newData.child('kind').val() === 'friend' || newData.child('kind').val() === 'friend-no' || (newData.child('kind').val() === 'play' && newData.child('room').isString() && newData.child('room').val().length >= 4 && newData.child('room').val().length <= 8))"
           }
         }
       }

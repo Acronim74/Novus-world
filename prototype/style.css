@@ -815,8 +815,8 @@ table.rec tr.total td { font-weight: 700; border-bottom: none; }
   background: var(--panel);
 }
 
-#playInvite { z-index: 30; }
-#playInvite .sheet-actions { margin-top: 16px; flex-wrap: wrap; }
+#playInvite, #friendAsk { z-index: 30; }
+#playInvite .sheet-actions, #friendAsk .sheet-actions { margin-top: 16px; flex-wrap: wrap; }
 
 .cab-section-head {
   margin: 12px 0 8px;

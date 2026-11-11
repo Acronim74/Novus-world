@@ -39,7 +39,8 @@
 (вставляются в консоли Firebase: Realtime Database → Rules). Для проверки без Firebase
 откройте игру с `?net=local` в двух вкладках одного браузера.
 
-Кабинет игрока (Google или почта) пишет статистику и призы в `users/{uid}`. Друзья: код в
-`codes/{код}` и приглашения в `users/{uid}/inbox`. В консоли Firebase нужно включить
-Authentication → Sign-in method: Google и Email/Password, добавить домен сайта в Authorized
-domains и опубликовать обновлённые правила базы (после списка друзей — обязательно заново).
+Кабинет игрока (Google или почта) пишет статистику, призы, залы и обучение в `users/{uid}`.
+Друзья только по заявке: код в `codes/{код}`, заявки и приглашения в `users/{uid}/inbox`.
+В консоли Firebase нужно включить Authentication → Sign-in method: Google и Email/Password,
+добавить домен сайта в Authorized domains и опубликовать обновлённые правила базы
+(после друзей — обязательно заново, иначе заявки не подтвердятся).

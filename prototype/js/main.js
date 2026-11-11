@@ -48,5 +48,13 @@ resize();
 const firstVisit = typeof startFromRooms === 'function' && startFromRooms();
 refreshControls();
 newGame();
-if (firstVisit) openRooms();
+if (firstVisit) {
+  if (new URLSearchParams(location.search).get('net') === 'local') openRooms();
+  else {
+    window._awaitHalls = true;
+    setTimeout(() => {
+      if (window._awaitHalls && typeof settleHallsBoot === 'function') settleHallsBoot();
+    }, 5000);
+  }
+}
 requestAnimationFrame(frame);

@@ -26,6 +26,7 @@ const rooms = {
   last: null, // id зала, 'free' или null — ещё не выбирал (первый вход)
   free: { ...FREE_DEFAULT },
   tutorialDone: false,
+  at: 0,
 };
 
 function loadRooms() {
@@ -35,6 +36,7 @@ function loadRooms() {
       rooms.last = d.last === 'free' || ROOM_BY_ID[d.last] ? d.last : null;
       rooms.free = { ...FREE_DEFAULT, ...(d.free || {}) };
       rooms.tutorialDone = Boolean(d.tutorialDone);
+      rooms.at = Number(d.at) || 0;
     }
   } catch {
     // Хранилище недоступно — начнём с первого зала.
@@ -43,10 +45,100 @@ function loadRooms() {
 
 function saveRooms() {
   try {
+    rooms.at = Date.now();
     localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
   } catch {
     // ничего страшного: выбор зала просто не запомнится
   }
+  if (typeof pushAccountCloud === 'function') pushAccountCloud();
+}
+
+function exportRoomsState() {
+  return {
+    version: 1,
+    at: rooms.at || 0,
+    last: rooms.last,
+    free: rooms.free,
+    tutorialDone: rooms.tutorialDone,
+  };
+}
+
+function mergeRoomsCloud(remote) {
+  if (!remote || typeof remote !== 'object') return;
+  if (remote.tutorialDone) rooms.tutorialDone = true;
+  const remoteAt = Number(remote.at) || 0;
+  const localAt = Number(rooms.at) || 0;
+  if (!rooms.last || remoteAt >= localAt) {
+    if (remote.last === 'free' || ROOM_BY_ID[remote.last]) rooms.last = remote.last;
+    if (remote.free && typeof remote.free === 'object') {
+      rooms.free = { ...FREE_DEFAULT, ...remote.free };
+    }
+  }
+  rooms.at = Math.max(localAt, remoteAt);
+  try {
+    localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
+  } catch {
+    // как с партиями: без хранилища просто не запомнится
+  }
+}
+
+function inferHallFromGames(games = loadRecords()) {
+  if (!games.some(g => g.room)) return null;
+  const n = openRoomsCount(games);
+  if (!n) return null;
+  return ROOMS[n - 1].id;
+}
+
+function applyCloudHalls({ enter = false } = {}) {
+  const games = loadRecords();
+  if (games.some(g => g.room) || openRoomsCount(games) > 1) {
+    rooms.tutorialDone = true;
+  }
+  if (!rooms.last) rooms.last = inferHallFromGames(games);
+  try {
+    localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
+  } catch { /* */ }
+  if (rooms.tutorialDone) {
+    if (typeof hideCoach === 'function') hideCoach();
+    if (typeof coach === 'object') coach.active = false;
+  }
+  if (typeof renderRooms === 'function') renderRooms();
+  if (!enter || net.active || net.code) return Boolean(rooms.last);
+  if (rooms.last === 'free') {
+    const f = rooms.free;
+    cfg.room = null;
+    cfg.mode = 'ai';
+    cfg.level = AI_LEVELS[f.level] && f.level >= 1 && f.level <= 3 ? f.level : FREE_DEFAULT.level;
+    if (HINT_MODES[f.hint]) cfg.hintLen = f.hint;
+    if (TABLE_STATES[f.table]) setTable(f.table);
+    cfg.zoneReturn = Boolean(f.zoneReturn);
+    closeModal('rooms');
+    if (typeof refreshControls === 'function') refreshControls();
+    newGame();
+    return true;
+  }
+  const idx = ROOMS.findIndex(r => r.id === rooms.last);
+  if (idx >= 0 && roomOpen(idx, games)) {
+    cfg.room = rooms.last;
+    cfg.mode = 'ai';
+    applyRoom();
+    closeModal('rooms');
+    if (typeof refreshControls === 'function') refreshControls();
+    newGame();
+    return true;
+  }
+  return false;
+}
+
+function settleHallsBoot() {
+  const wait = Boolean(window._awaitHalls);
+  window._awaitHalls = false;
+  const picker = document.getElementById('rooms');
+  const roomsOpen = picker && !picker.classList.contains('closed');
+  const enter = wait || (roomsOpen && typeof partyStarted === 'function' && !partyStarted());
+  if (applyCloudHalls({ enter }) && enter) return;
+  if (wait) openRooms();
+  else renderRooms();
 }
 
 function currentRoom() {

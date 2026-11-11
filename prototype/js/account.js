@@ -133,13 +133,14 @@ function cloudSet(sub, value) {
 }
 
 let cloudTimer = 0;
-function pushAccountCloud() {
+function pushAccountCloud(immediate) {
   if (!accountSignedIn()) return;
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(() => {
+  const run = () => {
     cloudSet('records', { version: 1, games: loadRecords() });
     cloudSet('prizes', account.prizes);
     if (typeof exportProgress === 'function') cloudSet('progress', exportProgress());
+    if (typeof exportRoomsState === 'function') cloudSet('rooms', exportRoomsState());
     const name = myName();
     const lv = typeof playerLevel === 'function' ? playerLevel() : null;
     cloudSet('public', {
@@ -149,16 +150,19 @@ function pushAccountCloud() {
       ...(typeof friends !== 'undefined' && friends.code ? { code: friends.code } : {}),
       ...(lv ? { level: lv.level, xp: lv.xp } : {}),
     });
-  }, 400);
+  };
+  if (immediate) run();
+  else cloudTimer = setTimeout(run, 400);
 }
 
 async function pullAccountCloud() {
   if (!accountSignedIn()) return;
-  const [remoteRecords, remotePrizes, pub, remoteProgress] = await Promise.all([
+  const [remoteRecords, remotePrizes, pub, remoteProgress, remoteRooms] = await Promise.all([
     cloudGet('records'),
     cloudGet('prizes'),
     cloudGet('public'),
     cloudGet('progress'),
+    cloudGet('rooms'),
   ]);
   const mergedGames = mergeGames(loadRecords(), Array.isArray(remoteRecords?.games) ? remoteRecords.games : []);
   if (typeof backfillGameXp === 'function') backfillGameXp(mergedGames);
@@ -167,6 +171,7 @@ async function pullAccountCloud() {
   const mergedPrizes = mergePrizes(loadPrizes(), remotePrizes && typeof remotePrizes === 'object' ? remotePrizes : {});
   savePrizes(mergedPrizes);
   if (typeof mergeProgress === 'function') mergeProgress(remoteProgress);
+  if (typeof mergeRoomsCloud === 'function') mergeRoomsCloud(remoteRooms);
   if (pub?.name && !myName()) {
     localStorage.setItem(NAME_KEY, String(pub.name).slice(0, 20));
   }
@@ -194,8 +199,9 @@ function refreshAccountPrizes(games) {
 function onGamesChanged(games) {
   if (typeof noteProgressFromGames === 'function') noteProgressFromGames(games);
   refreshAccountPrizes(games);
-  pushAccountCloud();
+  pushAccountCloud(true);
   renderAccount();
+  if (typeof renderRooms === 'function') renderRooms();
 }
 
 async function onAccountAuth(user) {
@@ -224,6 +230,7 @@ async function onAccountAuth(user) {
   }
   renderAccount();
   renderRecords();
+  if (typeof settleHallsBoot === 'function') settleHallsBoot();
 }
 
 async function withAccount(action) {
@@ -646,5 +653,10 @@ if (new URLSearchParams(location.search).get('net') !== 'local') {
     }
   }).catch(e => {
     account.error = authMessage(e);
+    if (typeof settleHallsBoot === 'function') settleHallsBoot();
   });
 }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') pushAccountCloud(true);
+});
+window.addEventListener('pagehide', () => pushAccountCloud(true));
