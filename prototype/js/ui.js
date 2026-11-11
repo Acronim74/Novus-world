@@ -197,13 +197,13 @@ function bindSeg(id, get, set) {
 
 function refreshControls() {
   for (const refresh of segRefreshers) refresh();
+  const room = typeof currentRoom === 'function' ? currentRoom() : null;
   document.getElementById('groupLevel').classList.toggle('dim', cfg.mode !== 'ai' || net.active);
-  // В комнате нельзя сменить режим: иначе leaveRoom удалял бы партию. Условия меняют через предложение сопернику.
-  document.getElementById('groupMode').classList.toggle('locked', Boolean(net.code));
+  // В комнате и в зале режим соперника не меняют: иначе партия сносится или сбрасывается зал.
+  document.getElementById('groupMode').classList.toggle('locked', Boolean(net.code || room));
   // В сетевой партии условия общие: текущий сет уже идёт по ним, новые — только по согласию и со следующей партии.
   for (const id of ['groupTable', 'groupHint', 'groupTime']) document.getElementById(id).classList.toggle('locked', net.active);
-  // В зале соперника, подсказку и стол задаёт зал.
-  const room = typeof currentRoom === 'function' ? currentRoom() : null;
+  // В зале соперника, подсказку и стол задаёт зал — здесь их только показывают.
   for (const id of ['groupLevel', 'groupTable', 'groupHint']) if (room) document.getElementById(id).classList.add('locked');
   if (!room && !net.active) document.getElementById('groupLevel').classList.remove('locked');
   for (const id of ['optCircleDark', 'optFree', 'optZoneReturn']) document.getElementById(id).disabled = net.active;
@@ -218,10 +218,13 @@ function refreshControls() {
   document.getElementById('timeNote').textContent = cfg.shotTime
     ? `Не успели ударить за ${cfg.shotTime} с — штрафная пешка и ход переходит (п. 17.1.15).`
     : 'Думайте над ударом сколько угодно.';
-  document.getElementById('levelNetNote').textContent = net.code
+  const levelNote = document.getElementById('levelNetNote');
+  levelNote.textContent = net.code
     ? 'Идёт игра по сети: компьютер не участвует. Условия комнаты меняются в окне «Игра по сети»: один предлагает, другой подтверждает. Пока нет согласия, остаются прежние.'
-    : room ? `Условия задаёт зал «${room.name}». Выбрать соперника и подсказку самому можно в «Свободной игре» — она в окне «Залы».`
+    : room
+      ? `Вы в зале «${room.name}». Здесь нельзя менять соперника, сложность, натирку стола и подсказку — их задаёт зал. Чтобы выбрать условия самому, откройте «Залы» и войдите в «Свободную игру».`
       : '';
+  levelNote.classList.toggle('warn', Boolean(net.code || room));
   const xpNote = document.getElementById('aiXpNote');
   if (xpNote) {
     if (cfg.mode !== 'ai') {
@@ -282,6 +285,7 @@ function setTable(v) {
 
 bindSeg('optMode', () => cfg.mode, v => {
   if (net.code) return;
+  if (typeof currentRoom === 'function' && currentRoom()) return;
   if (typeof leaveRoomToFree === 'function') leaveRoomToFree();
   cfg.mode = v;
   aiToken++;
