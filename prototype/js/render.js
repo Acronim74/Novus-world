@@ -205,6 +205,8 @@ function circle(x, y, r, fill) {
 }
 
 function draw() {
+  // Сцена ещё без размера (вкладка открыта скрытой): рисовать нечего, drawImage на пустом холсте падает.
+  if (!canvas.width || !canvas.height) return;
   const skin = typeof tableSkin === 'function' ? tableSkin() : null;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ensureTableLayer(skin);

@@ -835,7 +835,9 @@ let pendingInviteUid = null;
 
 function rulesLines(r) {
   if (!r) return [];
-  const skin = typeof tableSkinCaption === 'function' ? tableSkinCaption(r.skin) : '';
+  // Строки идут в innerHTML, а условия приходят от соперника: берём только известные значения.
+  r = sanitizeRules(r);
+  const skin =typeof tableSkinCaption === 'function' ? tableSkinCaption(r.skin) : '';
   return [
     `Очки за победу: ${typeof clampStake === 'function' ? clampStake(r.stake) : (Number(r.stake) || 20)}`,
     `Время на удар: ${Number(r.shotTime) ? `${r.shotTime} с` : 'без лимита'}`,
@@ -850,7 +852,7 @@ function rulesLines(r) {
 
 function sanitizeRules(r) {
   const out = {
-    shotTime: Number(r?.shotTime) || 0,
+    shotTime: [30, 20, 10].includes(Number(r?.shotTime)) ? Number(r.shotTime) : 0,
     table: TABLE_STATES[r?.table] ? r.table : 'normal',
     hintLen: HINT_MODES[r?.hintLen] ? r.hintLen : 'full',
     circleDark: r?.circleDark !== false,

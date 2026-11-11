@@ -5,7 +5,16 @@ let lastTime = performance.now();
 let accumulator = 0;
 let prevFrame = performance.now();
 
+// Ошибка в одном кадре не должна останавливать игру: следующий кадр заказываем в любом случае.
 function frame(now) {
+  try {
+    runFrame(now);
+  } finally {
+    requestAnimationFrame(frame);
+  }
+}
+
+function runFrame(now) {
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
   if (phase === 'moving') {
@@ -37,7 +46,6 @@ function frame(now) {
   prevFrame = now;
   updateTimer(now);
   draw();
-  requestAnimationFrame(frame);
 }
 
 new ResizeObserver(resize).observe(document.getElementById('stage'));
