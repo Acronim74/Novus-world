@@ -648,9 +648,80 @@ let onlineBusy = false;
 let onlineError = '';
 
 function roomLink() {
-  const params = new URLSearchParams(location.search);
-  params.set('room', net.code);
-  return `${location.origin}${location.pathname}?${params}`;
+  const u = new URL(location.href);
+  const local = u.searchParams.get('net');
+  u.search = '';
+  if (local) u.searchParams.set('net', local);
+  u.searchParams.set('room', net.code);
+  return u.toString();
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+function markCopied(btn, ok) {
+  const prev = btn.dataset.label || btn.textContent;
+  btn.dataset.label = prev;
+  btn.textContent = ok ? 'Скопировано' : 'Не вышло';
+  setTimeout(() => { btn.textContent = btn.dataset.label; }, 1600);
+}
+
+async function shareRoomInvite() {
+  const url = roomLink();
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Новус',
+        text: `Сыграем в новус. Код комнаты ${net.code}`,
+        url,
+      });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  const btn = document.getElementById('netShare');
+  markCopied(btn, await copyText(url));
+}
+
+function inviteMarkup() {
+  const url = roomLink();
+  let qr = '';
+  try {
+    qr = typeof qrSvg === 'function' ? qrSvg(url) : '';
+  } catch {
+    qr = '';
+  }
+  return `<div class="invite${net.peerUid ? ' compact' : ''}">` +
+    (qr ? `<div class="invite-qr">${qr}</div>` : '') +
+    '<div class="invite-side">' +
+    `<div class="room-code">Комната <b>${net.code}</b></div>` +
+    (net.peerUid
+      ? ''
+      : '<p class="tip">Покажите картинку или код другу: камера телефона откроет игру, мессенджер не нужен.</p>') +
+    '<div class="invite-actions">' +
+    '<button type="button" id="netCopy">Скопировать ссылку</button>' +
+    '<button type="button" id="netCopyCode">Скопировать код</button>' +
+    '<button type="button" id="netShare" class="primary">Поделиться</button>' +
+    '</div>' +
+    `<input id="netLink" class="invite-link" readonly value="${escapeHtml(url)}">` +
+    '</div></div>';
 }
 
 function renderOnline() {
@@ -671,7 +742,7 @@ function renderOnline() {
       '<div class="halves">' +
       '<section class="half"><h3>Создать комнату</h3>' + nameField +
       `<button id="netCreate" class="primary"${busy}>Создать комнату</button>` +
-      '<div class="tip">Появятся код и ссылка — отправьте их другу.</div></section>' +
+      '<div class="tip">Появятся код и картинка — покажите их другу в браузере, мессенджер не нужен.</div></section>' +
       '<section class="half"><h3>Войти в комнату</h3>' + nameField +
       '<label class="field">Код комнаты<input id="netCode" maxlength="7" placeholder="например K7P4Q" autocapitalize="characters" autocomplete="off"></label>' +
       `<button id="netJoin" class="primary"${busy}>Войти</button></section>` +
@@ -697,9 +768,7 @@ function renderOnline() {
     ? '<span class="dot wait"></span>Ждём соперника — отправьте ему ссылку или код'
     : `<span class="dot ${net.peerOnline ? 'on' : 'off'}"></span>${escapeHtml(net.peerName || 'Соперник')} ${net.peerOnline ? 'в сети' : 'не в сети'}`;
   box.innerHTML =
-    `<div class="room-code">Комната <b>${net.code}</b></div>` +
-    `<div class="join"><input id="netLink" readonly value="${escapeHtml(roomLink())}"><button id="netCopy">Копировать</button></div>` +
-    (navigator.share ? '<button id="netShare" class="primary">Отправить ссылку…</button>' : '') +
+    inviteMarkup() +
     `<div class="peer">${peer}</div>` +
     `<div class="match-bar">Счёт комнаты <b>${matchLabel()}</b></div>` +
     (net.active ? `<div class="note">Вы играете ${net.seat === 0 ? 'красными' : 'чёрными'}. Партия №${net.game}.</div>` : '') +
@@ -716,18 +785,12 @@ function renderOnline() {
   document.getElementById('netOfferReject')?.addEventListener('click', () => runOnline(rejectRuleOffer));
   document.getElementById('netOfferWithdraw')?.addEventListener('click', () => runOnline(withdrawRuleOffer));
   document.getElementById('netCopy').addEventListener('click', async e => {
-    const input = document.getElementById('netLink');
-    try {
-      await navigator.clipboard.writeText(input.value);
-    } catch {
-      input.select();
-      document.execCommand('copy');
-    }
-    e.target.textContent = 'Скопировано';
+    markCopied(e.currentTarget, await copyText(roomLink()));
   });
-  document.getElementById('netShare')?.addEventListener('click', () => {
-    navigator.share({ title: 'Новус', text: `Сыграем в новус? Код комнаты ${net.code}`, url: roomLink() }).catch(() => {});
+  document.getElementById('netCopyCode').addEventListener('click', async e => {
+    markCopied(e.currentTarget, await copyText(net.code));
   });
+  document.getElementById('netShare').addEventListener('click', () => shareRoomInvite());
   document.getElementById('netLeave').addEventListener('click', () => {
     if (net.active && phase !== 'over' && !confirm('Выйти из сетевой партии?')) return;
     leaveRoom();
