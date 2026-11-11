@@ -14,8 +14,8 @@ const ROOMS = [
     note: 'Только направление удара. Соперник считает удары и бьёт точно. Если шайба вернулась в свою зону — ход переходит, даже когда пешка забита (п. 18.1.5).' },
   { id: 'city', name: 'Турнир города', icon: '🏙', level: 4, hint: 'short', table: 'fresh', need: 3, xpWin: 40, xpLoss: 7, zoneReturn: true,
     note: 'Свежая натирка: всё катится далеко. Соперник почти мастер. Шайба в свою зону отдаёт ход (п. 18.1.5).' },
-  { id: 'grand', name: 'Большой чемпионат', icon: '🏆', level: 3, hint: 'off', table: 'random', need: 3, xpWin: 70, xpLoss: 10, zoneReturn: true,
-    note: 'Без подсказки, как за настоящим столом. Натирка каждый раз своя. Шайба в свою зону отдаёт ход (п. 18.1.5).' },
+  { id: 'grand', name: 'Большой чемпионат', icon: '🏆', level: 3, hint: 'off', table: 'fresh', need: 3, xpWin: 70, xpLoss: 10, zoneReturn: true,
+    note: 'Без подсказки, как за настоящим столом. Свежая натирка: всё катится далеко. Шайба в свою зону отдаёт ход (п. 18.1.5).' },
 ];
 const ROOM_BY_ID = Object.fromEntries(ROOMS.map(r => [r.id, r]));
 
