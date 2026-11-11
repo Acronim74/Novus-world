@@ -1107,6 +1107,51 @@ button.primary:hover { background: var(--accent-strong); }
   color: var(--text);
 }
 .offer-banner.wait { border-color: var(--line-strong); background: var(--bg-sunk); color: var(--text-2); }
+.offer-banner.play {
+  border-color: var(--ok);
+  background: rgba(127, 191, 122, 0.14);
+}
+.offer-banner .kicker, .desk-note .kicker {
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.offer-banner.play .kicker, .desk-note.play .kicker { color: var(--ok-text); }
+.desk-note.rules .kicker { color: var(--gold); }
+#deskNotes {
+  position: fixed;
+  z-index: 18;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+#deskNotes:empty { display: none; }
+.desk-note {
+  pointer-events: auto;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--accent);
+  background: #2a2418;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.desk-note.play { border-color: var(--ok); background: #1c2820; }
+.desk-note.wait { border-color: var(--line-strong); background: var(--panel); color: var(--text-2); font-weight: 500; }
+.desk-note .offer-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+button.attention {
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+#tabbar button.attention { color: var(--gold); }
 .offer-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .offer-list { margin: 10px 0 0; padding-left: 18px; color: var(--text-2); font-size: 13px; line-height: 1.45; }
 #ruleOffer { z-index: 30; }
@@ -1329,6 +1374,7 @@ body.net .buttons .react { display: block; }
 
   #tabbar button:active { background: var(--panel); }
   #tabbar button.on, #tabbar button.live { color: var(--ok); }
+  #tabbar button.attention { color: var(--gold); }
 
   #tabbar svg {
     width: 24px;
@@ -1359,6 +1405,8 @@ body.net .buttons .react { display: block; }
     gap: 6px;
     height: 34px;
   }
+
+  #deskNotes { top: 52px; }
 
   #mini .side-score {
     flex: 1;

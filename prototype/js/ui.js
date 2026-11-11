@@ -62,6 +62,8 @@ function updatePanel() {
   }).join('');
 
   renderMini(peer);
+  syncRoomButtons();
+  if (typeof renderDeskNotes === 'function') renderDeskNotes();
   if (typeof maybeShowRuleOffer === 'function') maybeShowRuleOffer();
   const roomsBtn = document.getElementById('btnRooms');
   if (roomsBtn) {
@@ -227,7 +229,7 @@ function refreshControls() {
     : 'Думайте над ударом сколько угодно.';
   const levelNote = document.getElementById('levelNetNote');
   levelNote.textContent = net.code
-    ? 'Идёт игра по сети: компьютер не участвует. Условия комнаты меняются в окне «Игра по сети»: один предлагает, другой подтверждает — и они сразу действуют на столе. Пока нет согласия, остаются прежние.'
+    ? 'Идёт игра по сети. Кнопка «Условия» открывает карточку условий. Если соперник уже предложил изменения, та же кнопка открывает подтверждение. Пока согласия нет, играют прежние.'
     : room
       ? `Вы в зале «${room.name}». Здесь нельзя менять соперника, сложность, натирку стола и подсказку — их задаёт зал. Чтобы выбрать условия самому, откройте «Залы» и войдите в «Свободную игру».`
       : '';
@@ -429,7 +431,40 @@ function askNewGame() {
   openModal('confirmNew');
 }
 
+function syncRoomButtons() {
+  const inRoom = Boolean(net.code);
+  const offer = typeof incomingRuleOffer === 'function' && incomingRuleOffer();
+  const waiting = typeof myRuleOffer === 'function' && myRuleOffer();
+  const label = !inRoom ? '' : offer ? 'Подтвердить' : waiting ? 'Ждём ответа' : 'Условия';
+  const btn = document.getElementById('btnLevel');
+  const full = btn?.querySelector('.full');
+  const short = btn?.querySelector('.short');
+  if (full) full.textContent = label || 'Сложность и время';
+  if (short) short.textContent = label || 'Сложность';
+  const tabSpan = document.querySelector('#tabLevel span');
+  if (tabSpan) tabSpan.textContent = label || 'Сложность';
+  btn?.classList.toggle('attention', offer);
+  document.getElementById('tabLevel')?.classList.toggle('attention', offer);
+  const invite = typeof pendingPlayInvites === 'function' && pendingPlayInvites().length > 0;
+  document.getElementById('btnOnline')?.classList.toggle('attention', invite);
+  document.getElementById('tabOnline')?.classList.toggle('attention', invite);
+}
+
 function openLevel() {
+  if (net.code) {
+    if (typeof incomingRuleOffer === 'function' && incomingRuleOffer()) {
+      if (typeof maybeShowRuleOffer === 'function') maybeShowRuleOffer(true);
+      return;
+    }
+    if (typeof myRuleOffer === 'function' && myRuleOffer()) {
+      openOnline();
+      return;
+    }
+    if (typeof openRulesDialog === 'function') {
+      openRulesDialog('edit');
+      return;
+    }
+  }
   refreshControls();
   openModal('level');
 }

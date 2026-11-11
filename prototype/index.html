@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=60">
+  <link rel="stylesheet" href="style.css?v=61">
 </head>
 <body>
   <div id="app">
@@ -33,7 +33,7 @@
         <button id="btnReact" class="react">😊<span class="full"> Реакция сопернику</span></button>
         <button id="btnNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg><span class="full">Новая партия</span><span class="short">Новая</span></button>
         <button id="btnRooms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5"/><path d="M10 16l4-4-4-4"/><path d="M14 12H4"/></svg><span class="full">Выйти из зала</span><span class="short">Залы</span></button>
-        <button id="btnLevel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg><span class="full">Сложность и время</span></button>
+        <button id="btnLevel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg><span class="full">Сложность и время</span><span class="short">Сложность</span></button>
         <button id="btnCabinet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg><span class="full">Кабинет</span></button>
         <button id="btnDrawer"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span class="full">Настройки и журнал</span></button>
       </div>
@@ -76,6 +76,7 @@
   </nav>
 
   <div id="reactBar" class="closed" role="menu" aria-label="Реакция сопернику"></div>
+  <div id="deskNotes"></div>
 
   <div id="confirmNew" class="modal closed">
     <div class="sheet small" role="dialog" aria-label="Новая партия">
@@ -263,7 +264,7 @@
   <div id="ruleOffer" class="modal closed">
     <div class="sheet small" role="dialog" aria-label="Новые условия">
       <div class="drawer-head">
-        <span>Новые условия</span>
+        <span>Подтверждение условий</span>
       </div>
       <p id="ruleOfferText"></p>
       <ul id="ruleOfferList" class="offer-list"></ul>
@@ -291,7 +292,7 @@
   <div id="playInvite" class="modal closed">
     <div class="sheet small" role="dialog" aria-label="Приглашение в игру">
       <div class="drawer-head">
-        <span>Приглашение</span>
+        <span>Вход в игру</span>
       </div>
       <p id="playInviteText"></p>
       <div class="sheet-actions">
@@ -392,26 +393,26 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=60"></script>
-  <script src="js/state.js?v=60"></script>
-  <script src="js/zones.js?v=60"></script>
-  <script src="js/shot.js?v=60"></script>
-  <script src="js/physics.js?v=60"></script>
-  <script src="js/referee.js?v=60"></script>
-  <script src="js/ai.js?v=60"></script>
-  <script src="js/records.js?v=60"></script>
-  <script src="js/trace.js?v=60"></script>
-  <script src="js/progress.js?v=60"></script>
-  <script src="js/render.js?v=60"></script>
-  <script src="js/input.js?v=60"></script>
-  <script src="js/ui.js?v=60"></script>
-  <script src="js/net-config.js?v=60"></script>
-  <script src="js/qr.js?v=60"></script>
-  <script src="js/net.js?v=60"></script>
-  <script src="js/account.js?v=60"></script>
-  <script src="js/friends.js?v=60"></script>
-  <script src="js/rooms.js?v=60"></script>
-  <script src="js/tutorial.js?v=60"></script>
-  <script src="js/main.js?v=60"></script>
+  <script src="js/config.js?v=61"></script>
+  <script src="js/state.js?v=61"></script>
+  <script src="js/zones.js?v=61"></script>
+  <script src="js/shot.js?v=61"></script>
+  <script src="js/physics.js?v=61"></script>
+  <script src="js/referee.js?v=61"></script>
+  <script src="js/ai.js?v=61"></script>
+  <script src="js/records.js?v=61"></script>
+  <script src="js/trace.js?v=61"></script>
+  <script src="js/progress.js?v=61"></script>
+  <script src="js/render.js?v=61"></script>
+  <script src="js/input.js?v=61"></script>
+  <script src="js/ui.js?v=61"></script>
+  <script src="js/net-config.js?v=61"></script>
+  <script src="js/qr.js?v=61"></script>
+  <script src="js/net.js?v=61"></script>
+  <script src="js/account.js?v=61"></script>
+  <script src="js/friends.js?v=61"></script>
+  <script src="js/rooms.js?v=61"></script>
+  <script src="js/tutorial.js?v=61"></script>
+  <script src="js/main.js?v=61"></script>
 </body>
 </html>

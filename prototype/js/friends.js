@@ -331,7 +331,7 @@ function fillPlayInvite(id, inv) {
   const box = document.getElementById('playInvite');
   box.dataset.id = id;
   document.getElementById('playInviteText').textContent =
-    `${inv.name || 'Игрок'} приглашает сыграть. Комната ${inv.room}.`;
+    `${inv.name || 'Игрок'} зовёт в комнату ${inv.room}. Это вход в игру, не смена условий.`;
 }
 
 async function dismissPlayInvite(forget) {
@@ -400,6 +400,86 @@ async function dismissFriendAsk(forget) {
   else friends.snoozed[`friend:${id}`] = true;
 }
 
+function pendingPlayInvites() {
+  return inboxEntries('play').filter(([, inv]) => !(net.code && net.code === inv.room));
+}
+
+function playInboxMarkup() {
+  return pendingPlayInvites().map(([id, inv]) =>
+    `<div class="offer-banner play">` +
+    `<div class="kicker">Вход в игру</div>` +
+    `<div>${escapeHtml(inv.name || 'Игрок')} зовёт в комнату <b>${escapeHtml(inv.room)}</b>. Это приглашение, не смена условий.</div>` +
+    `<div class="offer-actions">` +
+    `<button type="button" data-play-no="${escapeHtml(id)}">Отклонить</button>` +
+    `<button type="button" class="primary" data-play-yes="${escapeHtml(id)}">Войти в игру</button>` +
+    `</div></div>`
+  ).join('');
+}
+
+function renderDeskNotes() {
+  const box = document.getElementById('deskNotes');
+  if (!box) return;
+  const parts = [];
+  if (typeof incomingRuleOffer === 'function' && incomingRuleOffer()) {
+    const who = net.peerName || 'Соперник';
+    parts.push(
+      `<div class="desk-note rules">` +
+      `<div class="kicker">Подтверждение условий</div>` +
+      `<div>${escapeHtml(who)} предлагает новые условия. Пока не подтвердите, играют прежние.</div>` +
+      `<div class="offer-actions"><button type="button" id="deskRulesOpen" class="primary">Открыть карточку</button></div>` +
+      `</div>`
+    );
+  } else if (typeof myRuleOffer === 'function' && myRuleOffer()) {
+    parts.push(
+      `<div class="desk-note wait">` +
+      `<div class="kicker">Условия</div>` +
+      `<div>Ждём, пока соперник подтвердит новые условия. Пока ответа нет, играют прежние.</div>` +
+      `<div class="offer-actions"><button type="button" id="deskRulesWithdraw">Отозвать</button></div>` +
+      `</div>`
+    );
+  }
+  for (const [id, inv] of pendingPlayInvites()) {
+    parts.push(
+      `<div class="desk-note play">` +
+      `<div class="kicker">Вход в игру</div>` +
+      `<div>${escapeHtml(inv.name || 'Игрок')} зовёт в комнату <b>${escapeHtml(inv.room)}</b></div>` +
+      `<div class="offer-actions">` +
+      `<button type="button" data-play-no="${escapeHtml(id)}">Отклонить</button>` +
+      `<button type="button" class="primary" data-play-yes="${escapeHtml(id)}">Войти в игру</button>` +
+      `</div></div>`
+    );
+  }
+  box.innerHTML = parts.join('');
+  document.getElementById('deskRulesOpen')?.addEventListener('click', () => {
+    if (typeof maybeShowRuleOffer === 'function') maybeShowRuleOffer(true);
+  });
+  document.getElementById('deskRulesWithdraw')?.addEventListener('click', () => {
+    if (typeof runOnline === 'function') runOnline(withdrawRuleOffer);
+  });
+  bindPlayInvites(box);
+}
+
+function bindPlayInvites(box) {
+  box.querySelectorAll('[data-play-yes]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const invite = document.getElementById('playInvite');
+      if (invite) invite.dataset.id = btn.dataset.playYes;
+      acceptPlayInvite().catch(e => {
+        friends.error = e?.message || String(e);
+        renderFriendsPane();
+      });
+    });
+  });
+  box.querySelectorAll('[data-play-no]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.playNo;
+      if (accountSignedIn()) await net.backend.set(`users/${account.user.uid}/inbox/${id}`, null);
+      const invite = document.getElementById('playInvite');
+      if (invite?.dataset.id === id) invite.classList.add('closed');
+    });
+  });
+}
+
 function friendsOnlineMarkup() {
   if (net.peerUid) {
     if (!accountSignedIn()) return '';
@@ -430,6 +510,7 @@ function friendsOnlineMarkup() {
 }
 
 function bindFriendsOnline(box) {
+  bindPlayInvites(box);
   box.querySelectorAll('[data-invite]').forEach(btn => {
     btn.addEventListener('click', () => inviteFriend(btn.dataset.invite));
   });

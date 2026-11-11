@@ -754,6 +754,7 @@ function renderOnline() {
   if (!net.code) {
     const nameField = '<label class="field">Ваше имя<input class="netName" maxlength="20" placeholder="необязательно" autocomplete="nickname"></label>';
     box.innerHTML =
+      (typeof playInboxMarkup === 'function' ? playInboxMarkup() : '') +
       '<div class="halves">' +
       '<section class="half"><h3>Создать комнату</h3>' + nameField +
       `<button id="netCreate" class="primary"${busy}>Создать комнату</button>` +
@@ -786,20 +787,24 @@ function renderOnline() {
     ? '<span class="dot wait"></span>Ждём соперника — отправьте ему ссылку или код'
     : `<span class="dot ${net.peerOnline ? 'on' : 'off'}"></span>${escapeHtml(net.peerName || 'Соперник')} ${net.peerOnline ? 'в сети' : 'не в сети'}`;
   box.innerHTML =
+    ruleOfferBanner() +
+    (typeof playInboxMarkup === 'function' ? playInboxMarkup() : '') +
     inviteMarkup() +
     `<div class="peer">${peer}</div>` +
     `<div class="match-bar">Счёт комнаты <b>${matchLabel()}</b></div>` +
     (net.active ? `<div class="note">Вы играете ${net.seat === 0 ? 'красными' : 'чёрными'}. Партия №${net.game}.</div>` : '') +
     (net.rules
       ? '<div class="rules"><div class="head">Условия игры' +
-        (canOfferRoomRules() ? '<button id="netRules">Изменить</button>' : '') +
+        roomRulesButton() +
         `</div><ul>${rulesLines(net.rules).map(l => `<li>${l}</li>`).join('')}</ul></div>`
       : '') +
-    ruleOfferBanner() +
     (typeof friendsOnlineMarkup === 'function' ? friendsOnlineMarkup() : '') +
     err +
     '<button id="netLeave">Выйти из комнаты</button>';
-  document.getElementById('netRules')?.addEventListener('click', () => openRulesDialog('edit'));
+  document.getElementById('netRules')?.addEventListener('click', () => {
+    if (incomingRuleOffer()) maybeShowRuleOffer(true);
+    else openRulesDialog('edit');
+  });
   document.getElementById('netOfferAccept')?.addEventListener('click', () => runOnline(acceptRuleOffer));
   document.getElementById('netOfferReject')?.addEventListener('click', () => runOnline(rejectRuleOffer));
   document.getElementById('netOfferWithdraw')?.addEventListener('click', () => runOnline(withdrawRuleOffer));
@@ -863,10 +868,12 @@ function rulesKey(r) {
   return [s.stake, s.shotTime, s.table, s.hintLen, s.circleDark, s.freePlace, s.zoneReturn, skin].join('|');
 }
 
-function canOfferRoomRules() {
-  if (!net.code || !net.rules) return false;
-  if (incomingRuleOffer()) return false;
-  return Boolean(net.peerUid) || net.role === 'host';
+function roomRulesButton() {
+  if (!net.code || !net.rules) return '';
+  if (!net.peerUid && net.role !== 'host' && !incomingRuleOffer()) return '';
+  if (incomingRuleOffer()) return '<button id="netRules" class="primary">Подтвердить</button>';
+  if (myRuleOffer()) return '<button id="netRules" disabled>Ждём ответа</button>';
+  return '<button id="netRules">Изменить</button>';
 }
 
 function incomingRuleOffer() {
@@ -1006,9 +1013,10 @@ function onRuleProposal(p) {
 function ruleOfferBanner() {
   if (incomingRuleOffer()) {
     return '<div class="offer-banner">' +
-      '<div>Соперник предлагает новые условия. Пока вы не подтвердите, играют прежние.</div>' +
+      '<div class="kicker">Подтверждение условий</div>' +
+      '<div>Соперник предлагает новые условия. Это не приглашение в игру. Пока не подтвердите, играют прежние.</div>' +
       '<div class="offer-actions"><button id="netOfferReject">Оставить как было</button>' +
-      '<button id="netOfferAccept" class="primary">Принять</button></div></div>';
+      '<button id="netOfferAccept" class="primary">Принять условия</button></div></div>';
   }
   if (myRuleOffer()) {
     return '<div class="offer-banner wait">' +
