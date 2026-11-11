@@ -62,6 +62,7 @@ function updatePanel() {
   }).join('');
 
   renderMini(peer);
+  if (typeof maybeShowRuleOffer === 'function') maybeShowRuleOffer();
   const roomsBtn = document.getElementById('btnRooms');
   if (roomsBtn) {
     const inRoom = typeof currentRoom === 'function' && currentRoom();
@@ -197,7 +198,9 @@ function bindSeg(id, get, set) {
 function refreshControls() {
   for (const refresh of segRefreshers) refresh();
   document.getElementById('groupLevel').classList.toggle('dim', cfg.mode !== 'ai' || net.active);
-  // В сетевой партии условия общие для обоих — их задал создатель комнаты.
+  // В комнате нельзя сменить режим: иначе leaveRoom удалял бы партию. Условия меняют через предложение сопернику.
+  document.getElementById('groupMode').classList.toggle('locked', Boolean(net.code));
+  // В сетевой партии условия общие: текущий сет уже идёт по ним, новые — только по согласию и со следующей партии.
   for (const id of ['groupTable', 'groupHint', 'groupTime']) document.getElementById(id).classList.toggle('locked', net.active);
   // В зале соперника, подсказку и стол задаёт зал.
   const room = typeof currentRoom === 'function' ? currentRoom() : null;
@@ -215,8 +218,8 @@ function refreshControls() {
   document.getElementById('timeNote').textContent = cfg.shotTime
     ? `Не успели ударить за ${cfg.shotTime} с — штрафная пешка и ход переходит (п. 17.1.15).`
     : 'Думайте над ударом сколько угодно.';
-  document.getElementById('levelNetNote').textContent = net.active
-    ? 'Идёт игра по сети: компьютер не участвует, а условия игры задал создатель комнаты.'
+  document.getElementById('levelNetNote').textContent = net.code
+    ? 'Идёт игра по сети: компьютер не участвует. Условия комнаты меняются в окне «Игра по сети»: один предлагает, другой подтверждает. Пока нет согласия, остаются прежние.'
     : room ? `Условия задаёт зал «${room.name}». Выбрать соперника и подсказку самому можно в «Свободной игре» — она в окне «Залы».`
       : '';
   const xpNote = document.getElementById('aiXpNote');
@@ -278,12 +281,9 @@ function setTable(v) {
 }
 
 bindSeg('optMode', () => cfg.mode, v => {
+  if (net.code) return;
   if (typeof leaveRoomToFree === 'function') leaveRoomToFree();
   cfg.mode = v;
-  if (net.code) {
-    leaveRoom();
-    return;
-  }
   aiToken++;
   aiShowCue = false;
   if (phase === 'ai') startTurn();
@@ -348,7 +348,8 @@ function overlayOpen() {
 
 for (const modal of document.querySelectorAll('.modal')) {
   modal.addEventListener('click', e => {
-    if (e.target === modal || e.target.closest('.close')) modal.classList.add('closed');
+    if (e.target.closest('.close')) modal.classList.add('closed');
+    else if (e.target === modal && modal.id !== 'ruleOffer') modal.classList.add('closed');
   });
 }
 
@@ -375,7 +376,8 @@ function askNewGame() {
     return;
   }
   document.getElementById('confirmNewText').textContent = net.active
-    ? `Начать новый сет? У соперника он тоже начнётся заново, а цвета поменяются. Счёт комнаты ${matchLabel()} сохранится.`
+    ? `Начать новый сет? У соперника он тоже начнётся заново, а цвета поменяются. Счёт комнаты ${matchLabel()} сохранится.` +
+      (net.proposal ? ' Новые условия ещё не подтверждены — сет начнётся по прежним.' : '')
     : phase === 'over' ? 'Начать новый сет?' : 'Начать новый сет? Текущая партия будет прервана и не попадёт в статистику.';
   openModal('confirmNew');
 }

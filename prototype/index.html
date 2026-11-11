@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=49">
+  <link rel="stylesheet" href="style.css?v=50">
 </head>
 <body>
   <div id="app">
@@ -129,7 +129,7 @@
       </div>
       <div id="levelNetNote" class="tip"></div>
 
-      <div class="group">
+      <div class="group" id="groupMode">
         <div class="group-title">Соперник</div>
         <div class="seg" id="optMode">
           <button data-v="ai">Компьютер</button>
@@ -202,7 +202,7 @@
         <span>Условия игры</span>
         <button class="close" title="Закрыть">✕</button>
       </div>
-      <div class="tip">Соперник будет играть по этим же условиям. Оформление стола берётся из кабинета того, кто создаёт комнату.</div>
+      <div class="tip">В комнате условия общие. Сменить их после начала игры можно только если второй игрок подтвердит; иначе остаются прежние. Оформление стола берётся из кабинета того, кто создаёт комнату.</div>
 
       <div class="group">
         <div class="group-title">Очки за победу</div>
@@ -256,6 +256,20 @@
       <div class="sheet-actions">
         <button class="close">Отмена</button>
         <button id="btnRulesOk" class="primary">Создать комнату</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ruleOffer" class="modal closed">
+    <div class="sheet small" role="dialog" aria-label="Новые условия">
+      <div class="drawer-head">
+        <span>Новые условия</span>
+      </div>
+      <p id="ruleOfferText"></p>
+      <ul id="ruleOfferList" class="offer-list"></ul>
+      <div class="sheet-actions">
+        <button id="btnRuleReject">Оставить как было</button>
+        <button id="btnRuleAccept" class="primary">Принять</button>
       </div>
     </div>
   </div>
@@ -349,24 +363,24 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=49"></script>
-  <script src="js/state.js?v=49"></script>
-  <script src="js/zones.js?v=49"></script>
-  <script src="js/shot.js?v=49"></script>
-  <script src="js/physics.js?v=49"></script>
-  <script src="js/referee.js?v=49"></script>
-  <script src="js/ai.js?v=49"></script>
-  <script src="js/records.js?v=49"></script>
-  <script src="js/trace.js?v=49"></script>
-  <script src="js/progress.js?v=49"></script>
-  <script src="js/render.js?v=49"></script>
-  <script src="js/input.js?v=49"></script>
-  <script src="js/ui.js?v=49"></script>
-  <script src="js/net-config.js?v=49"></script>
-  <script src="js/net.js?v=49"></script>
-  <script src="js/account.js?v=49"></script>
-  <script src="js/rooms.js?v=49"></script>
-  <script src="js/tutorial.js?v=49"></script>
-  <script src="js/main.js?v=49"></script>
+  <script src="js/config.js?v=50"></script>
+  <script src="js/state.js?v=50"></script>
+  <script src="js/zones.js?v=50"></script>
+  <script src="js/shot.js?v=50"></script>
+  <script src="js/physics.js?v=50"></script>
+  <script src="js/referee.js?v=50"></script>
+  <script src="js/ai.js?v=50"></script>
+  <script src="js/records.js?v=50"></script>
+  <script src="js/trace.js?v=50"></script>
+  <script src="js/progress.js?v=50"></script>
+  <script src="js/render.js?v=50"></script>
+  <script src="js/input.js?v=50"></script>
+  <script src="js/ui.js?v=50"></script>
+  <script src="js/net-config.js?v=50"></script>
+  <script src="js/net.js?v=50"></script>
+  <script src="js/account.js?v=50"></script>
+  <script src="js/rooms.js?v=50"></script>
+  <script src="js/tutorial.js?v=50"></script>
+  <script src="js/main.js?v=50"></script>
 </body>
 </html>

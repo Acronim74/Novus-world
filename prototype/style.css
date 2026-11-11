@@ -988,6 +988,21 @@ button.primary:hover { background: var(--accent-strong); }
 #onlineBody .rules .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; }
 #onlineBody .rules .head button { padding: 4px 10px; font-weight: normal; }
 #roomRules label.check { margin-top: 4px; }
+.offer-banner {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.offer-banner.wait { border-color: var(--line-strong); background: var(--bg-sunk); color: var(--text-2); }
+.offer-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.offer-list { margin: 10px 0 0; padding-left: 18px; color: var(--text-2); font-size: 13px; line-height: 1.45; }
+#ruleOffer { z-index: 30; }
+#ruleOffer .sheet-actions { margin-top: 16px; }
 
 .group-title {
   margin-bottom: 6px;

@@ -4,7 +4,8 @@
 // Комната в базе: rooms/{код}
 //   players {host, guest}  — uid игроков
 //   names/{uid}, presence/{uid}
-//   rules                  — условия игры и оформление стола, их выбирает создатель комнаты
+//   rules                  — действующие условия и оформление стола
+//   proposal {by, rules, at} — предложение сменить условия: действует только после согласия второго
 //   game  {n, red, rules}  — номер партии в комнате, uid того, кто играет красными, и условия этой партии
 //   shot  {n, seq, by, d}  — последний удар: где стояла шайба, направление, сила, зерно физики
 //   state {n, seq, d}      — позиция после удара, её считает и присылает тот, кто бил
@@ -35,6 +36,8 @@ const net = {
   unsubs: [],
   lastAim: '',
   rules: null,
+  proposal: null,
+  offerShown: 0,
   savedRules: null,
   reactSeen: null,
   reactAt: 0,
@@ -307,6 +310,7 @@ function enterRoom(code, role) {
     if (typeof applyLoadout === 'function') applyLoadout();
     renderOnline();
   }));
+  net.unsubs.push(db.on(roomPath('proposal'), onRuleProposal));
   net.unsubs.push(db.on(roomPath('match'), onMatch));
   net.unsubs.push(db.on(roomPath('game'), onGame));
   net.unsubs.push(db.on(roomPath('shot'), onShot));
@@ -394,6 +398,8 @@ async function onGame(g) {
 }
 
 function leaveRoom() {
+  closeModal('ruleOffer');
+  closeModal('roomRules');
   const room = net.code && roomPath();
   const last = !net.peerOnline;
   for (const off of net.unsubs) off();
@@ -407,7 +413,7 @@ function leaveRoom() {
   Object.assign(net, {
     active: false, code: null, role: null, peerUid: null, peerName: '', peerOnline: false,
     peerAiming: false, game: 0, seq: 0, myShotSeq: 0, replaySeq: 0, pendingState: null, rules: null,
-    match: {}, matchCounted: 0,
+    proposal: null, offerShown: 0, match: {}, matchCounted: 0,
   });
   if (net.savedRules) applyRules(net.savedRules);
   net.savedRules = null;
@@ -699,12 +705,16 @@ function renderOnline() {
     (net.active ? `<div class="note">Вы играете ${net.seat === 0 ? 'красными' : 'чёрными'}. Партия №${net.game}.</div>` : '') +
     (net.rules
       ? '<div class="rules"><div class="head">Условия игры' +
-        (net.role === 'host' ? '<button id="netRules">Изменить</button>' : '') +
+        (canOfferRoomRules() ? '<button id="netRules">Изменить</button>' : '') +
         `</div><ul>${rulesLines(net.rules).map(l => `<li>${l}</li>`).join('')}</ul></div>`
       : '') +
+    ruleOfferBanner() +
     err +
     '<button id="netLeave">Выйти из комнаты</button>';
   document.getElementById('netRules')?.addEventListener('click', () => openRulesDialog('edit'));
+  document.getElementById('netOfferAccept')?.addEventListener('click', () => runOnline(acceptRuleOffer));
+  document.getElementById('netOfferReject')?.addEventListener('click', () => runOnline(rejectRuleOffer));
+  document.getElementById('netOfferWithdraw')?.addEventListener('click', () => runOnline(withdrawRuleOffer));
   document.getElementById('netCopy').addEventListener('click', async e => {
     const input = document.getElementById('netLink');
     try {
@@ -724,16 +734,18 @@ function renderOnline() {
   });
 }
 
-// ----- Окно «Условия игры»: создатель комнаты выбирает их перед созданием и может поменять потом -----
+// ----- Окно «Условия игры»: перед созданием комнаты — сразу, в комнате — только с согласия обоих -----
 const RULE_NAMES = {
   table: { fresh: 'свежая', normal: 'обычная', worn: 'стёрлась', bare: 'без порошка' },
   hintLen: { off: 'нет', short: 'короткая', mid: 'до касания', full: 'с отскоками' },
 };
 const rulesDialog = document.getElementById('roomRules');
+const ruleOfferDialog = document.getElementById('ruleOffer');
 let rulesDraft = null;
 let rulesMode = 'create';
 
 function rulesLines(r) {
+  if (!r) return [];
   const skin = typeof tableSkinCaption === 'function' ? tableSkinCaption(r.skin) : '';
   return [
     `Очки за победу: ${typeof clampStake === 'function' ? clampStake(r.stake) : (Number(r.stake) || 20)}`,
@@ -747,6 +759,40 @@ function rulesLines(r) {
   ].filter(Boolean);
 }
 
+function sanitizeRules(r) {
+  const out = {
+    shotTime: Number(r?.shotTime) || 0,
+    table: TABLE_STATES[r?.table] ? r.table : 'normal',
+    hintLen: HINT_MODES[r?.hintLen] ? r.hintLen : 'full',
+    circleDark: r?.circleDark !== false,
+    freePlace: Boolean(r?.freePlace),
+    zoneReturn: Boolean(r?.zoneReturn),
+    stake: typeof clampStake === 'function' ? clampStake(r?.stake) : (Number(r?.stake) || 20),
+  };
+  if (r?.skin && typeof r.skin === 'object') out.skin = r.skin;
+  return out;
+}
+
+function rulesKey(r) {
+  const s = sanitizeRules(r);
+  const skin = s.skin ? Object.keys(s.skin).sort().map(k => s.skin[k]).join(',') : '';
+  return [s.stake, s.shotTime, s.table, s.hintLen, s.circleDark, s.freePlace, s.zoneReturn, skin].join('|');
+}
+
+function canOfferRoomRules() {
+  if (!net.code || !net.rules) return false;
+  if (incomingRuleOffer()) return false;
+  return Boolean(net.peerUid) || net.role === 'host';
+}
+
+function incomingRuleOffer() {
+  return Boolean(net.proposal?.by && net.proposal.by !== net.uid && net.proposal.rules);
+}
+
+function myRuleOffer() {
+  return Boolean(net.proposal?.by && net.proposal.by === net.uid);
+}
+
 function renderRulesDraft() {
   for (const seg of rulesDialog.querySelectorAll('.seg[data-key]')) {
     for (const b of seg.querySelectorAll('button')) b.classList.toggle('on', b.dataset.v === String(rulesDraft[seg.dataset.key]));
@@ -755,16 +801,29 @@ function renderRulesDraft() {
 }
 
 function openRulesDialog(mode) {
+  if (mode === 'edit' && incomingRuleOffer()) {
+    maybeShowRuleOffer(true);
+    return;
+  }
   rulesMode = mode;
   rulesDraft = { ...(mode === 'edit' && net.rules ? net.rules : currentRules()) };
-  if (typeof exportTableSkin === 'function') rulesDraft.skin = exportTableSkin();
-  document.getElementById('btnRulesOk').textContent = mode === 'edit' ? 'Сохранить' : 'Создать комнату';
+  if (typeof exportTableSkin === 'function' && (mode !== 'edit' || net.role === 'host')) {
+    rulesDraft.skin = exportTableSkin();
+  }
+  const needConfirm = mode === 'edit' && net.peerUid;
+  document.getElementById('btnRulesOk').textContent = mode === 'create'
+    ? 'Создать комнату'
+    : needConfirm ? 'Предложить сопернику' : 'Сохранить';
   const skin = typeof tableSkinCaption === 'function' ? tableSkinCaption(rulesDraft.skin) : '';
-  const next = mode === 'edit' && net.active
-    ? 'Новые условия начнут действовать со следующей партии. '
-    : '';
-  document.getElementById('rulesNote').textContent =
-    next + (skin ? `Оформление стола — из вашего кабинета: ${skin}. Соперник увидит этот стол.` : '');
+  let note = '';
+  if (mode === 'edit' && net.active) note = 'Новые условия начнут действовать со следующей партии. ';
+  if (needConfirm) {
+    note += 'Соперник должен подтвердить. Если не подтвердит, условия останутся прежними. ';
+  }
+  if (skin && (mode !== 'edit' || net.role === 'host')) {
+    note += `Оформление стола — из вашего кабинета: ${skin}. Соперник увидит этот стол.`;
+  }
+  document.getElementById('rulesNote').textContent = note.trim();
   renderRulesDraft();
   rulesDialog.classList.remove('closed');
 }
@@ -774,6 +833,100 @@ function publishRoomTableSkin() {
   const skin = exportTableSkin();
   if (net.rules) net.rules.skin = skin;
   net.backend.set(roomPath('rules/skin'), skin);
+}
+
+async function proposeRoomRules(raw) {
+  const rules = sanitizeRules(raw);
+  if (net.role === 'host' && typeof exportTableSkin === 'function') rules.skin = exportTableSkin();
+  else if (net.rules?.skin) rules.skin = net.rules.skin;
+  if (!net.peerUid) {
+    await net.backend.set(roomPath('rules'), rules);
+    log('Условия комнаты обновлены.', 'ok');
+    return;
+  }
+  if (incomingRuleOffer()) {
+    throw new Error('Сначала ответьте на предложение соперника.');
+  }
+  if (rulesKey(rules) === rulesKey(net.rules)) {
+    log('Условия те же — предлагать нечего.', 'info');
+    return;
+  }
+  await net.backend.set(roomPath('proposal'), { by: net.uid, rules, at: Date.now() });
+  log('Предложение отправлено. Пока соперник не подтвердит, условия прежние.', 'info');
+}
+
+async function acceptRuleOffer() {
+  const p = net.proposal;
+  if (!p?.rules || p.by === net.uid) return;
+  const rules = sanitizeRules(p.rules);
+  // Оформление стола задаёт хозяин: если предлагает гость, стол не меняем.
+  if (net.role === 'host' && net.rules?.skin) rules.skin = net.rules.skin;
+  await net.backend.set(roomPath('rules'), rules);
+  await net.backend.set(roomPath('proposal'), null);
+  closeModal('ruleOffer');
+  log('Новые условия приняты. Они войдут в силу со следующей партии.', 'ok');
+}
+
+async function rejectRuleOffer() {
+  if (!net.proposal) return;
+  await net.backend.set(roomPath('proposal'), null);
+  closeModal('ruleOffer');
+  log('Предложение отклонено, условия прежние.', 'info');
+}
+
+async function withdrawRuleOffer() {
+  if (!myRuleOffer()) return;
+  await net.backend.set(roomPath('proposal'), null);
+  log('Предложение отозвано, условия прежние.', 'info');
+}
+
+function fillRuleOffer() {
+  const p = net.proposal;
+  if (!p?.rules) return;
+  document.getElementById('ruleOfferText').textContent =
+    `${net.peerName || 'Соперник'} предлагает изменить условия. Если отклоните — останутся прежние. Новые войдут в силу со следующей партии.`;
+  document.getElementById('ruleOfferList').innerHTML = rulesLines(p.rules).map(l => `<li>${l}</li>`).join('');
+}
+
+function maybeShowRuleOffer(force = false) {
+  if (!incomingRuleOffer()) {
+    ruleOfferDialog.classList.add('closed');
+    return;
+  }
+  fillRuleOffer();
+  if (!force && net.active && phase !== 'over') return;
+  if (!force && net.offerShown === net.proposal.at) return;
+  net.offerShown = net.proposal.at;
+  ruleOfferDialog.classList.remove('closed');
+}
+
+function onRuleProposal(p) {
+  const prev = net.proposal?.at;
+  net.proposal = p?.by && p.rules ? p : null;
+  if (!net.proposal) net.offerShown = 0;
+  renderOnline();
+  if (incomingRuleOffer()) {
+    fillRuleOffer();
+    if (prev !== net.proposal.at) log('Соперник предлагает новые условия.', 'info');
+    maybeShowRuleOffer();
+  } else {
+    ruleOfferDialog.classList.add('closed');
+  }
+}
+
+function ruleOfferBanner() {
+  if (incomingRuleOffer()) {
+    return '<div class="offer-banner">' +
+      '<div>Соперник предлагает новые условия. Пока вы не подтвердите, играют прежние.</div>' +
+      '<div class="offer-actions"><button id="netOfferReject">Оставить как было</button>' +
+      '<button id="netOfferAccept" class="primary">Принять</button></div></div>';
+  }
+  if (myRuleOffer()) {
+    return '<div class="offer-banner wait">' +
+      '<div>Предложение отправлено. Ждём согласия. Пока его нет, условия прежние.</div>' +
+      '<div class="offer-actions"><button id="netOfferWithdraw">Отозвать</button></div></div>';
+  }
+  return '';
 }
 
 for (const seg of rulesDialog.querySelectorAll('.seg[data-key]')) {
@@ -794,10 +947,11 @@ for (const box of rulesDialog.querySelectorAll('input[data-key]')) {
 document.getElementById('btnRulesOk').addEventListener('click', () => {
   rulesDialog.classList.add('closed');
   const rules = { ...rulesDraft };
-  if (typeof exportTableSkin === 'function') rules.skin = exportTableSkin();
-  if (rulesMode === 'edit') net.backend.set(roomPath('rules'), rules);
+  if (rulesMode === 'edit') runOnline(() => proposeRoomRules(rules));
   else runOnline(() => createRoom(rules));
 });
+document.getElementById('btnRuleAccept').addEventListener('click', () => runOnline(acceptRuleOffer));
+document.getElementById('btnRuleReject').addEventListener('click', () => runOnline(rejectRuleOffer));
 
 async function runOnline(action) {
   onlineBusy = true;
