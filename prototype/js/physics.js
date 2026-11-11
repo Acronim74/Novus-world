@@ -285,15 +285,17 @@ function noteContact(a, b, vrel) {
   }
 }
 
-// п. 12.15, 18.1.5: без своих тёмных шайба на обратном ходу не должна уйти за линию своей зоны.
+// п. 12.15, 18.1.5: запоминаем, выходила ли шайба на поле. Саму зону судим уже на остановке.
 function trackStrikerReturn() {
   if (!shot || striker.state !== 'table') return;
-  const d = depthFromOwnRail(shot.player, striker.y);
-  if (d > ZONE) shot.crossedIntoField = true;
-  if (shot.darkAtStart.size === 0 && shot.crossedIntoField &&
-      d < ZONE - STRIKER_SPEC.hole - LINE_W / 2) {
-    shot.returnedPastZone = true;
-  }
+  if (depthFromOwnRail(shot.player, striker.y) > ZONE) shot.crossedIntoField = true;
+}
+
+// Линия своей зоны не видна в отверстии шайбы — и шайба до этого выходила на поле.
+function strikerStoppedPastOwnZone() {
+  if (!shot || striker.state !== 'table') return false;
+  if (shot.darkAtStart.size > 0 || !shot.crossedIntoField) return false;
+  return inBoardZone(shot.player, striker);
 }
 
 function noteRail(b, side) {

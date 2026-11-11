@@ -127,7 +127,7 @@ function judgeShot() {
   const pawnsOut = outs.filter(b => b !== striker);
   const loseSet = findLoseSet(p);
   const foul = loseSet ? null : findFoul(p, strikerIn, strikerOut);
-  const zoneReturn = cfg.zoneReturn && !foul && !loseSet && shot.returnedPastZone && shot.darkAtStart.size === 0;
+  const zoneReturn = cfg.zoneReturn && !foul && !loseSet && strikerStoppedPastOwnZone();
   const keepTurn = !foul && !loseSet && !zoneReturn && ownIn.length > 0 && oppIn.length === 0 && pawnsOut.length === 0;
   return { p, ownIn, oppIn, strikerIn, strikerOut, outs, pawnsOut, foul, keepTurn, loseSet, zoneReturn, undoHang };
 }
@@ -256,8 +256,8 @@ function endShot() {
     st.history.unshift(foul);
   }
   if (zoneReturn) {
-    log('Шайба обратным ходом ушла за линию своей зоны — ход переходит (п. 18.1.5).', 'info');
-    items.push({ cls: 'warn', icon: '↩', text: 'Шайба вернулась за линию своей зоны (п. 18.1.5)' });
+    log('Шайба остановилась в своей зоне после выхода на поле — ход переходит (п. 18.1.5).', 'info');
+    items.push({ cls: 'warn', icon: '↩', text: 'Шайба остановилась в своей зоне (п. 18.1.5)' });
   }
   if (!keepTurn && debt[p] > 0) payDebt(p);
   if (keepTurn && pawnsOnTable(p) === 0 && debt[p] > 0) payDebt(p);
@@ -308,7 +308,8 @@ function endShot() {
   }
 
   if (typeof finishTraceShot === 'function') {
-    finishTraceShot({ ownIn, foul, keepTurn }, winnerText ? { note: winnerText } : null);
+    const extra = winnerText ? { note: winnerText } : zoneReturn ? { note: 'п. 18.1.5: ход сопернику' } : null;
+    finishTraceShot({ ownIn, foul, keepTurn, zoneReturn }, extra);
   }
   shot = null;
   if (winnerText) {

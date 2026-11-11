@@ -29,7 +29,6 @@ function makeShotRecord(p) {
     touched: new Set(),
     strikerTouched: [],
     crossedIntoField: false,
-    returnedPastZone: false,
   };
 }
 

@@ -93,7 +93,9 @@ function finishTraceShot(j, extra) {
   t.own = j?.ownIn?.length || 0;
   t.foul = j?.foul || '';
   t.keep = Boolean(j?.keepTurn);
+  t.zone = Boolean(j?.zoneReturn);
   t.left = [pawnsOnTable(0) + debt[0], pawnsOnTable(1) + debt[1]];
+  if (striker) t.stop = [Math.round(striker.x), Math.round(striker.y)];
   if (extra) Object.assign(t, extra);
   matchTrace.game.shots.push(t);
   if (t.gain >= 150) {
@@ -126,7 +128,7 @@ function traceShotHtml(s) {
     : '';
   return `<div class="trace-shot${s.gain >= 150 ? ' hot' : ''}">` +
     `<div><b>№${s.n}</b> ${escapeHtml(who)} · ${s.power}% · зерно ${s.seed}</div>` +
-    `<div class="sub">${gain} · с (${s.from[0]}, ${s.from[1]}) · ${escapeHtml(result)}` +
+    `<div class="sub">${gain} · с (${s.from[0]}, ${s.from[1]})${s.stop ? ` → (${s.stop[0]}, ${s.stop[1]})` : ''} · ${escapeHtml(result)}` +
     `${s.left ? ` · осталось ${s.left[0]}:${s.left[1]}` : ''}</div>${spikes}</div>`;
 }
 
