@@ -1517,39 +1517,6 @@ body.net .buttons .react { display: block; }
   #fouls table { font-size: 12px; }
 }
 
-/* ----- Залы ----- */
-#roomsList { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.room-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #2b3338;
-}
-.room-card.here { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
-.room-card.shut { opacity: 0.6; }
-.room-card.fresh { animation: roomFresh 1.6s ease-out 2; }
-@keyframes roomFresh { 50% { background: #3a4a2e; } }
-.room-icon { font-size: 26px; width: 32px; text-align: center; flex-shrink: 0; }
-.room-body { flex: 1; min-width: 0; }
-.room-name { font-weight: 600; font-size: 15px; }
-.room-meta { color: var(--text-2); font-size: 12px; }
-.room-note { color: var(--muted); font-size: 12px; margin-top: 2px; }
-.room-progress { color: var(--gold); font-size: 12px; margin-top: 4px; }
-.room-xp { color: var(--muted); font-size: 11px; margin-top: 2px; }
-.room-card > button { flex-shrink: 0; min-width: 84px; padding: 10px 12px; }
-.room-extra { display: flex; gap: 8px; margin-top: 4px; }
-.room-extra button { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px; text-align: left; }
-.room-extra button.here { border-color: var(--accent); }
-.room-extra small { color: var(--muted); font-size: 11px; }
-.tip.warn { color: var(--gold); }
-@media (max-width: 520px) {
-  .room-extra { flex-direction: column; }
-  .room-meta, .room-xp { font-size: 11px; }
-}
-
 /* ----- Обучение в первой партии ----- */
 #coach {
   position: absolute;
@@ -1715,18 +1682,6 @@ input[type="range"]::-moz-range-thumb {
 .xp-bar { border-radius: 4px; background: var(--bg-sunk); }
 .xp-bar > div { border-radius: 4px; background: linear-gradient(90deg, var(--accent-strong), var(--gold)); }
 
-/* --- Залы --- */
-.room-card { border-radius: 14px; background: var(--raised); border-color: var(--line); }
-.room-card.here { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
-.room-icon {
-  width: 44px; height: 44px; display: grid; place-items: center; font-size: 24px;
-  border-radius: 12px; background: var(--bg-sunk); border: 1px solid var(--line);
-}
-.room-name { font-weight: 700; }
-.room-progress { color: var(--gold); }
-.room-extra button { border-radius: 12px; font-weight: 600; }
-.room-extra button.here { border-color: var(--accent); }
-.room-extra small { font-weight: 500; }
 #coach { border-radius: var(--radius-lg); border-color: var(--accent); background: rgba(37, 33, 29, 0.97); }
 
 /* --- Настройки: раскрывающиеся разделы --- */
@@ -1741,3 +1696,145 @@ details summary:hover { color: var(--accent); }
 #tabbar button.on, #tabbar button.live { color: var(--accent); }
 #touchBar button { border-radius: 12px; }
 #reactBar { border-radius: var(--radius-lg); }
+
+.tip.warn { color: var(--gold); }
+[hidden] { display: none !important; }
+button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+button.ghost:hover:not(:disabled) { background: var(--raised); color: var(--text); border-color: transparent; }
+
+/* ===== Залы: карточки, которые листаются ===== */
+.modal .sheet.rooms-sheet { width: min(760px, 100%); padding-left: 0; padding-right: 0; overflow: hidden; }
+.rooms-sheet > .drawer-head, .rooms-sheet > .tip { margin-left: 18px; margin-right: 18px; }
+.rooms-sheet > .tip.warn { text-align: center; margin-top: 10px; }
+.rooms-stage { position: relative; margin-top: 12px; }
+#roomsList {
+  --card: min(330px, 78vw);
+  display: flex;
+  gap: 16px;
+  padding: 14px calc(50% - var(--card) / 2) 18px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+#roomsList::-webkit-scrollbar { display: none; }
+
+.rc {
+  --tone: #e0a84a;
+  flex: 0 0 var(--card);
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  overflow: hidden;
+  opacity: 0.45;
+  transform: scale(0.94);
+  transition: opacity 0.25s, transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+  cursor: pointer;
+}
+.rc.cur { opacity: 1; transform: none; cursor: default; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); border-color: var(--line-strong); }
+.rc.here.cur { border-color: var(--tone); }
+.rc[data-card="dacha"] { --tone: #9ccf7a; }
+.rc[data-card="yard"] { --tone: #7fc3c9; }
+.rc[data-card="club"] { --tone: #e0a84a; }
+.rc[data-card="city"] { --tone: #e58f6b; }
+.rc[data-card="grand"] { --tone: #f0cf6a; }
+.rc.extra { --tone: #b7ad9c; }
+.rc.shut { --tone: #8a8275; }
+
+.rc-art {
+  position: relative;
+  height: 148px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--tone) 34%, transparent), transparent 70%),
+    linear-gradient(180deg, #2f2a24, #211e1a);
+  border-bottom: 1px solid var(--line);
+}
+.rc-art svg {
+  width: 168px; height: 106px;
+  fill: none; stroke: var(--tone); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--tone) 35%, transparent));
+}
+.rc-no, .rc-here {
+  position: absolute; top: 10px;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.rc-no { left: 12px; background: rgba(0, 0, 0, 0.35); color: var(--text-2); }
+.rc-here { right: 12px; background: var(--tone); color: #1d1608; }
+
+.rc-body { flex: 1; padding: 14px 16px 6px; }
+.rc-body h3 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: 0.01em; }
+.rc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.rc-chips span {
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--bg-sunk); border: 1px solid var(--line);
+  font-size: 12px; font-weight: 600; color: var(--text-2);
+}
+.rc-body p { margin: 10px 0 0; min-height: 3.9em; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.rc-progress { display: flex; align-items: center; gap: 9px; margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--gold); }
+.rc-progress.done { color: var(--ok-text); }
+.rc.shut .rc-progress { color: var(--muted); }
+.rc-pips { display: inline-flex; gap: 5px; flex-shrink: 0; }
+.rc-pips i { width: 11px; height: 11px; border-radius: 50%; border: 2px solid currentColor; opacity: 0.55; }
+.rc-pips i.on { background: currentColor; opacity: 1; }
+
+.rc-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 12px 16px 16px; }
+.rc-xp { white-space: nowrap; }
+.rc-actions { margin-left: auto; }
+.rc-xp { font-size: 11px; line-height: 1.5; color: var(--muted); }
+.rc-xp b { color: var(--text-2); font-size: 13px; }
+.rc-actions { display: flex; gap: 8px; }
+.rc-actions button { padding: 11px 18px; border-radius: 12px; white-space: nowrap; }
+.rc:not(.cur) .rc-actions button { pointer-events: none; }
+.rc.fresh .rc-art { animation: roomFresh 1.4s ease-out 3; }
+@keyframes roomFresh { 50% { filter: brightness(1.6); } }
+
+.rooms-arrow {
+  position: absolute; top: 50%; z-index: 2;
+  width: 42px; height: 42px; margin-top: -21px; padding: 0;
+  border-radius: 50%; background: var(--panel); border-color: var(--line-strong);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+.rooms-arrow svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+#roomsPrev { left: 14px; }
+#roomsNext { right: 14px; }
+.rooms-arrow:disabled { opacity: 0; pointer-events: none; }
+.rooms-dots { display: flex; justify-content: center; gap: 4px; }
+.rooms-dots button {
+  width: 22px; height: 22px; min-height: 0; padding: 0; border: none; background: transparent; position: relative;
+}
+.rooms-dots button::after {
+  content: ''; position: absolute; inset: 7px; border-radius: 50%; background: var(--line-strong); transition: background 0.2s, transform 0.2s;
+}
+.rooms-dots button.on::after { background: var(--accent); transform: scale(1.35); }
+@media (pointer: coarse), (max-width: 560px) {
+  .rooms-arrow { display: none; }
+  #roomsList { --card: min(330px, 84vw); gap: 12px; }
+}
+@media (max-height: 700px) {
+  .rc-art { height: 104px; }
+  .rc-art svg { width: 130px; height: 82px; }
+  .rc-body p { min-height: 0; }
+}
+
+/* ===== Итог партии ===== */
+.go-sheet { text-align: center; padding: 26px 22px 20px !important; }
+.go-room { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.go-title { margin-top: 6px; font-size: 30px; font-weight: 800; letter-spacing: 0.01em; }
+#gameOver[data-result="win"] .go-title { color: var(--gold); }
+#gameOver[data-result="loss"] .go-title { color: var(--text-2); }
+.go-score { display: flex; justify-content: center; align-items: baseline; gap: 10px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+.go-score b { font-size: 44px; font-weight: 800; line-height: 1; }
+.go-score span { font-size: 28px; color: var(--faint); }
+.go-xp { display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 999px; background: var(--accent-soft); color: #f6d595; font-weight: 700; }
+.go-line { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.go-line.gold { color: var(--gold); font-size: 15px; }
+.go-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+.go-actions button { padding: 12px; border-radius: 12px; }

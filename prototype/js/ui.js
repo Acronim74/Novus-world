@@ -26,7 +26,7 @@ function updatePanel() {
   const pl = PLAYERS[current];
   const peer = net.peerName || 'Соперник';
   const hint = phase === 'moving' ? 'Фишки в движении…'
-    : phase === 'over' ? (typeof currentRoom === 'function' && currentRoom() ? 'Нажмите «Залы» — сыграть ещё' : 'Нажмите «Новая партия»')
+    : phase === 'over' ? 'Нажмите «Новая партия»'
     : phase === 'ai' ? `Компьютер ${aiStatus}`
     : phase === 'remote' ? (net.peerOnline ? `${peer} целится…` : `${peer} не в сети — ждём`)
     : 'Поставьте шайбу, прицельтесь и ударьте';
@@ -62,6 +62,12 @@ function updatePanel() {
   }).join('');
 
   renderMini(peer);
+  const roomsBtn = document.getElementById('btnRooms');
+  if (roomsBtn) {
+    const inRoom = typeof currentRoom === 'function' && currentRoom();
+    roomsBtn.querySelector('.full').textContent = inRoom ? 'Выйти из зала' : 'Залы';
+    roomsBtn.hidden = net.active;
+  }
   const undoBlocked = typeof roomUndoBlocked === 'function' && roomUndoBlocked();
   for (const b of document.querySelectorAll('.undo')) b.disabled = !snapshot || phase === 'moving' || net.active || undoBlocked;
   updatePower();
@@ -362,9 +368,10 @@ function toggleDrawer() {
 }
 
 function askNewGame() {
-  // Без сети «Новая партия» открывает залы: там и новая партия в том же зале, и переход в другой.
-  if (!net.active && typeof openRooms === 'function') {
-    openRooms();
+  // Новая партия начинается в том же зале: из зала выходят только кнопкой «Выйти из зала».
+  if (!net.active && !(typeof partyStarted === 'function' && partyStarted())) {
+    closeModal('gameOver');
+    newGame();
     return;
   }
   document.getElementById('confirmNewText').textContent = net.active
@@ -384,7 +391,8 @@ document.getElementById('btnConfirmNew').addEventListener('click', () => {
   else newGame();
 });
 document.getElementById('btnNew').addEventListener('click', askNewGame);
-document.getElementById('tabNew').addEventListener('click', askNewGame);
+document.getElementById('tabNew').addEventListener('click', () => (net.active ? askNewGame() : openRooms()));
+document.getElementById('btnRooms').addEventListener('click', () => openRooms());
 document.getElementById('btnLevel').addEventListener('click', openLevel);
 document.getElementById('tabLevel').addEventListener('click', openLevel);
 document.getElementById('btnDrawer').addEventListener('click', toggleDrawer);

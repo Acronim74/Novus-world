@@ -48,6 +48,8 @@ function recordGame(winner, score) {
   renderRecords();
   if (typeof onGamesChanged === 'function') onGamesChanged(games);
   if (typeof noteRoomProgress === 'function') noteRoomProgress(game);
+  // Даём доиграть последнему движению на столе, потом показываем итог.
+  if (typeof showGameOver === 'function') setTimeout(() => { if (phase === 'over' && gameId === game.id) showGameOver(game); }, 1400);
 }
 
 function forgetGame(id) {

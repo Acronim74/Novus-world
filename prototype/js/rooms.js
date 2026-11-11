@@ -114,6 +114,7 @@ function enterHall(id) {
   rooms.last = id === 'hotseat' ? 'free' : id;
   saveRooms();
   closeModal('rooms');
+  closeModal('gameOver');
   refreshControls();
   newGame();
 }
@@ -154,20 +155,49 @@ function noteRoomProgress(game) {
   const after = openRoomsCount(games);
   if (after > before) {
     const room = ROOMS[after - 1];
-    toast = { text: `Открыт зал «${room.name}»!`, cls: 'keep', until: performance.now() + 3600 };
     roomUnlockedNotice = room.id;
   }
 }
 let roomUnlockedNotice = null;
 
-// ----- Окно выбора зала -----
+// ----- Окно выбора зала: карточки, которые листаются -----
+// Рисунки залов: тонкие линии, цвет задаёт карточка.
+const ROOM_ART = {
+  dacha: '<path d="M14 62h92"/><path d="M30 62V40l20-16 20 16v22"/><path d="M44 62V48h12v14"/><path d="M60 30v-8h5v12"/><circle cx="92" cy="20" r="7"/><path d="M88 62V46M88 46c-7 0-9-10-3-13 1-6 11-6 12 0 6 3 3 13-3 13"/>',
+  yard: '<path d="M10 64h100"/><path d="M18 64V26h26v38M52 64V16h26v48"/><path d="M25 34h4M33 34h4M25 44h4M33 44h4M59 25h4M67 25h4M59 35h4M67 35h4M59 45h4M67 45h4"/><path d="M96 64V48M96 48c-8 0-9-11-2-14 2-7 12-5 12 2 5 4 1 12-5 12"/><path d="M84 64v-6h-6v6M76 58h10"/>',
+  club: '<path d="M60 6v14"/><path d="M42 30c2-8 8-12 18-12s16 4 18 12z"/><path d="M48 34l-6 12M72 34l6 12M60 34v10" opacity=".55"/><rect x="24" y="48" width="72" height="10" rx="2"/><path d="M32 58v10M88 58v10"/><circle cx="46" cy="53" r="1.6"/><circle cx="60" cy="53" r="1.6"/><circle cx="74" cy="53" r="1.6"/>',
+  city: '<path d="M8 66h104"/><path d="M16 66V40h16v26M36 66V28h14v38M54 66V18l8-8 8 8v48M74 66V34h14v32M92 66V44h12v22"/><path d="M62 10V4"/><path d="M22 47h4M22 55h4M41 36h4M41 46h4M41 56h4M60 26h4M60 36h4M60 46h4M79 42h4M79 52h4M96 51h4"/>',
+  grand: '<path d="M44 14h32v16a16 16 0 0 1-32 0z"/><path d="M44 18H32c0 9 5 14 13 15M76 18h12c0 9-5 14-13 15"/><path d="M60 46v10M48 64h24M52 56h16v8H52z"/><path d="M60 21l2.2 4.6 5 .6-3.7 3.4 1 5-4.5-2.5-4.5 2.5 1-5-3.7-3.4 5-.6z"/><path d="M18 40l3 3M102 40l-3 3M14 26h4M102 26h4" opacity=".6"/>',
+  free: '<circle cx="60" cy="38" r="24"/><circle cx="60" cy="38" r="14"/><circle cx="60" cy="38" r="4"/><path d="M60 8v10M60 58v10M30 38h10M80 38h10"/>',
+  hotseat: '<circle cx="42" cy="26" r="10"/><path d="M22 62c0-12 9-18 20-18s20 6 20 18"/><circle cx="82" cy="30" r="8"/><path d="M70 46c3-2 7-3 12-3 10 0 17 6 17 17"/>',
+};
+const LOCK_ART = '<rect x="44" y="36" width="32" height="26" rx="4"/><path d="M50 36v-8a10 10 0 0 1 20 0v8"/><circle cx="60" cy="48" r="2.5"/><path d="M60 50.5V55"/>';
+
+function roomArt(id, locked) {
+  return `<svg viewBox="0 0 120 76" aria-hidden="true">${locked ? LOCK_ART : ROOM_ART[id]}</svg>`;
+}
+
+function pipsHtml(have, need) {
+  let html = '';
+  for (let k = 0; k < need; k++) html += `<i${k < have ? ' class="on"' : ''}></i>`;
+  return `<span class="rc-pips">${html}</span>`;
+}
+
+function partyStarted() {
+  // Партия начата, когда в ней был хотя бы один удар (трасса партии ведёт их счёт).
+  return phase !== 'over' && typeof matchTrace !== 'undefined' && Boolean(matchTrace.game?.shots?.length);
+}
+
 function renderRooms() {
   const box = document.getElementById('roomsList');
   if (!box) return;
   const games = loadRecords();
   const open = openRoomsCount(games);
   const active = currentRoom()?.id || (cfg.mode === 'ai' ? 'free' : 'hotseat');
-  const inGame = phase !== 'over' && stats.some(s => s.history.length);
+  const inGame = partyStarted();
+  const actions = id => active === id && inGame
+    ? `<button data-room-close>Продолжить</button><button class="primary" data-room="${id}">Заново</button>`
+    : `<button class="primary" data-room="${id}">${active === id ? 'Играть ещё' : 'Войти'}</button>`;
 
   let html = '';
   ROOMS.forEach((room, i) => {
@@ -175,36 +205,54 @@ function renderRooms() {
     const wins = roomWins(room.id, games);
     const played = roomGames(room.id, games).length;
     const next = ROOMS[i + 1];
-    let progress = '';
+    let progress;
     if (!isOpen) {
       const prev = ROOMS[i - 1];
-      const have = roomWins(prev.id, games);
-      progress = `Откроется после ${room.need} ${plural(room.need, 'победы', 'побед', 'побед')} в зале «${prev.name}» · сейчас ${Math.min(have, room.need)} из ${room.need}`;
+      const have = Math.min(roomWins(prev.id, games), room.need);
+      progress = `<div class="rc-progress">${pipsHtml(have, room.need)}<span>Нужно ${room.need} ${plural(room.need, 'победа', 'победы', 'побед')} в зале «${prev.name}»</span></div>`;
     } else if (next && i + 1 >= open) {
-      progress = `До зала «${next.name}»: ${Math.min(wins, next.need)} из ${next.need} ${plural(next.need, 'победы', 'побед', 'побед')}`;
-    } else if (played) {
-      progress = `Побед: ${wins} из ${played}`;
+      progress = `<div class="rc-progress">${pipsHtml(Math.min(wins, next.need), next.need)}<span>до зала «${next.name}»</span></div>`;
+    } else {
+      progress = `<div class="rc-progress done"><span>${played ? `Побед: ${wins} из ${played}` : 'Зал пройден'}</span></div>`;
     }
-    const fresh = roomUnlockedNotice === room.id ? ' fresh' : '';
-    html += `<div class="room-card${isOpen ? '' : ' shut'}${active === room.id ? ' here' : ''}${fresh}">` +
-      `<div class="room-icon">${isOpen ? room.icon : '🔒'}</div>` +
-      `<div class="room-body"><div class="room-name">${i + 1}. ${room.name}</div>` +
-      `<div class="room-meta">${AI_LEVELS[room.level].name} · ${HINT_SHORT[room.hint]} · ${room.table === 'random' ? 'натирка случайная' : TABLE_STATES[room.table].name.toLowerCase()}</div>` +
-      `<div class="room-note">${room.note}</div>` +
-      (progress ? `<div class="room-progress">${progress}</div>` : '') +
-      `<div class="room-xp">Победа +${room.xpWin} · поражение +${room.xpLoss}</div></div>` +
-      (isOpen ? `<button class="primary" data-room="${room.id}">${active === room.id && inGame ? 'Заново' : 'Играть'}</button>` : '') +
-      '</div>';
+    html += `<article class="rc${isOpen ? '' : ' shut'}${active === room.id ? ' here' : ''}${roomUnlockedNotice === room.id ? ' fresh' : ''}" data-card="${room.id}">` +
+      `<div class="rc-art">${roomArt(room.id, !isOpen)}<span class="rc-no">Зал ${i + 1} из ${ROOMS.length}</span>` +
+      (active === room.id ? '<span class="rc-here">вы здесь</span>' : '') + '</div>' +
+      `<div class="rc-body"><h3>${room.name}</h3>` +
+      '<div class="rc-chips">' +
+      `<span>${AI_LEVELS[room.level].name}</span><span>${HINT_SHORT[room.hint]}</span>` +
+      `<span>${room.table === 'random' ? 'натирка случайная' : TABLE_STATES[room.table].name.toLowerCase()}</span></div>` +
+      `<p>${room.note}</p>${progress}</div>` +
+      `<div class="rc-foot"><div class="rc-xp"><b>+${room.xpWin}</b> за победу<br><b>+${room.xpLoss}</b> за поражение</div>` +
+      `<div class="rc-actions">${isOpen ? actions(room.id) : '<button disabled>Закрыт</button>'}</div></div>` +
+      '</article>';
   });
-  html += '<div class="room-extra">' +
-    `<button data-room="free"${active === 'free' ? ' class="here"' : ''}>🎯 Свободная игра<small>соперник, подсказка и стол — на выбор</small></button>` +
-    `<button data-room="hotseat"${active === 'hotseat' ? ' class="here"' : ''}>👥 Вдвоём на одном устройстве<small>очки не начисляются</small></button>` +
-    '</div>';
+  const extra = [
+    ['free', 'Свободная игра', ['соперник на выбор', 'подсказка на выбор', 'любой стол'],
+      'Тренировка без лестницы: все условия вы задаёте сами в окне «Сложность». Очки идут по уровню соперника.'],
+    ['hotseat', 'Вдвоём', ['одно устройство', 'ходы по очереди'],
+      'Партия с тем, кто рядом: бьёте по очереди на одном экране. Очки не начисляются.'],
+  ];
+  for (const [id, name, chips, note] of extra) {
+    html += `<article class="rc extra${active === id ? ' here' : ''}" data-card="${id}">` +
+      `<div class="rc-art">${roomArt(id, false)}<span class="rc-no">Без лестницы</span>` +
+      (active === id ? '<span class="rc-here">вы здесь</span>' : '') + '</div>' +
+      `<div class="rc-body"><h3>${name}</h3><div class="rc-chips">${chips.map(c => `<span>${c}</span>`).join('')}</div><p>${note}</p></div>` +
+      `<div class="rc-foot"><div class="rc-xp"></div><div class="rc-actions">${actions(id)}</div></div></article>`;
+  }
   box.innerHTML = html;
+  document.getElementById('roomsDots').innerHTML =
+    [...box.children].map((c, k) => `<button data-go="${k}" aria-label="Карточка ${k + 1}"></button>`).join('');
   document.getElementById('roomsWarn').textContent = inGame
-    ? 'Текущая партия прервётся и не попадёт в статистику.'
+    ? 'Если войти в другой зал или начать заново, текущая партия прервётся и не попадёт в статистику.'
     : '';
+  const focus = roomUnlockedNotice || active;
   roomUnlockedNotice = null;
+  requestAnimationFrame(() => {
+    const card = box.querySelector(`[data-card="${focus}"]`);
+    if (card) roomsGo([...box.children].indexOf(card), false);
+    markRoomPage();
+  });
 }
 
 const HINT_SHORT = {
@@ -214,15 +262,120 @@ const HINT_SHORT = {
   full: 'полная подсказка',
 };
 
+function roomsPage() {
+  const box = document.getElementById('roomsList');
+  const mid = box.scrollLeft + box.clientWidth / 2;
+  let best = 0;
+  let bestD = Infinity;
+  [...box.children].forEach((c, k) => {
+    const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
+    if (d < bestD) {
+      bestD = d;
+      best = k;
+    }
+  });
+  return best;
+}
+
+function roomsGo(k, smooth = true) {
+  const box = document.getElementById('roomsList');
+  const card = box.children[Math.max(0, Math.min(box.children.length - 1, k))];
+  if (!card) return;
+  box.scrollTo({ left: card.offsetLeft + card.offsetWidth / 2 - box.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+function markRoomPage() {
+  const box = document.getElementById('roomsList');
+  const k = roomsPage();
+  [...box.children].forEach((c, n) => c.classList.toggle('cur', n === k));
+  [...document.getElementById('roomsDots').children].forEach((d, n) => d.classList.toggle('on', n === k));
+  document.getElementById('roomsPrev').disabled = k === 0;
+  document.getElementById('roomsNext').disabled = k === box.children.length - 1;
+}
+
 function openRooms() {
+  closeModal('gameOver');
   renderRooms();
   openModal('rooms');
 }
 
-document.getElementById('roomsList')?.addEventListener('click', e => {
-  const btn = e.target.closest('button[data-room]');
-  if (btn) enterHall(btn.dataset.room);
+{
+  const box = document.getElementById('roomsList');
+  box.addEventListener('click', e => {
+    if (e.target.closest('[data-room-close]')) {
+      closeModal('rooms');
+      return;
+    }
+    const btn = e.target.closest('button[data-room]');
+    if (btn) {
+      enterHall(btn.dataset.room);
+      return;
+    }
+    const card = e.target.closest('.rc');
+    if (card && !card.classList.contains('cur')) roomsGo([...box.children].indexOf(card));
+  });
+  let raf = 0;
+  box.addEventListener('scroll', () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(markRoomPage);
+  }, { passive: true });
+  document.getElementById('roomsPrev').addEventListener('click', () => roomsGo(roomsPage() - 1));
+  document.getElementById('roomsNext').addEventListener('click', () => roomsGo(roomsPage() + 1));
+  document.getElementById('roomsDots').addEventListener('click', e => {
+    const dot = e.target.closest('button[data-go]');
+    if (dot) roomsGo(Number(dot.dataset.go));
+  });
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('rooms').classList.contains('closed')) return;
+    if (e.key === 'ArrowLeft') roomsGo(roomsPage() - 1);
+    if (e.key === 'ArrowRight') roomsGo(roomsPage() + 1);
+  });
+}
+
+// ----- Конец партии: зал остаётся, пока игрок сам из него не выйдет -----
+function showGameOver(game) {
+  if (net.active || !game) return;
+  const result = gameResult(game);
+  const room = ROOM_BY_ID[game.room];
+  const games = loadRecords();
+  const title = result === 'win' ? 'Победа!' : result === 'loss' ? 'Поражение' : result === 'draw' ? 'Ничья'
+    : `${PLAYERS[game.winner].name} победили`;
+  let html = `<div class="go-score"><b>${game.score[0]}</b><span>:</span><b>${game.score[1]}</b></div>`;
+  if (game.xp) html += `<div class="go-xp">+${game.xp} ${plural(game.xp, 'очко', 'очка', 'очков')}</div>`;
+  let nextRoom = null;
+  if (room) {
+    const i = ROOMS.indexOf(room);
+    const next = ROOMS[i + 1];
+    const wins = roomWins(room.id, games);
+    if (next && wins >= next.need) {
+      const justOpened = result === 'win' && wins === next.need;
+      if (justOpened) nextRoom = next;
+      html += `<div class="go-line${justOpened ? ' gold' : ''}">${justOpened ? `Открыт зал «${next.name}»!` : `Зал «${next.name}» открыт`}</div>`;
+    } else if (next) {
+      html += `<div class="go-line">${pipsHtml(wins, next.need)} до зала «${next.name}»: ${wins} из ${next.need} ${plural(next.need, 'победы', 'побед', 'побед')}</div>`;
+    }
+  }
+  document.getElementById('gameOverTitle').textContent = title;
+  document.getElementById('gameOverRoom').textContent = room ? `${room.name} · зал ${ROOMS.indexOf(room) + 1}`
+    : cfg.mode === 'ai' ? 'Свободная игра' : 'Вдвоём на одном устройстве';
+  document.getElementById('gameOverBody').innerHTML = html;
+  const nextBtn = document.getElementById('btnNextRoom');
+  nextBtn.hidden = !nextRoom;
+  if (nextRoom) {
+    nextBtn.textContent = `В зал «${nextRoom.name}»`;
+    nextBtn.dataset.room = nextRoom.id;
+  }
+  document.getElementById('btnAgain').className = nextRoom ? '' : 'primary';
+  document.getElementById('gameOver').dataset.result = result;
+  openModal('gameOver');
+}
+
+document.getElementById('btnAgain').addEventListener('click', () => {
+  closeModal('gameOver');
+  newGame();
 });
+document.getElementById('btnNextRoom').addEventListener('click', e => enterHall(e.currentTarget.dataset.room));
+document.getElementById('btnLeaveRoom').addEventListener('click', openRooms);
 
 // ----- Старт: первый вход — выбор зала, дальше — последний зал -----
 loadRooms();
