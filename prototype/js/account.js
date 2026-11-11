@@ -146,6 +146,7 @@ function pushAccountCloud() {
       name,
       at: Date.now(),
       photo: account.user.photoURL || '',
+      ...(typeof friends !== 'undefined' && friends.code ? { code: friends.code } : {}),
       ...(lv ? { level: lv.level, xp: lv.xp } : {}),
     });
   }, 400);
@@ -169,6 +170,7 @@ async function pullAccountCloud() {
   if (pub?.name && !myName()) {
     localStorage.setItem(NAME_KEY, String(pub.name).slice(0, 20));
   }
+  if (pub?.code && typeof friends === 'object') friends.code = String(pub.code);
   refreshAccountPrizes(mergedGames);
   pushAccountCloud();
   renderRecords();
@@ -211,6 +213,14 @@ async function onAccountAuth(user) {
     }
     account.notice = '';
     if (wasGuest && account.tab === 'auth') account.tab = 'player';
+    if (typeof startFriends === 'function') startFriends();
+  } else if (typeof stopFriends === 'function') {
+    stopFriends();
+    if (typeof friends !== 'undefined' && friends.pendingAdd) {
+      account.notice = 'Войдите, чтобы добавить друга по ссылке.';
+      account.tab = 'auth';
+      openCabinet('auth');
+    }
   }
   renderAccount();
   renderRecords();
@@ -352,6 +362,9 @@ async function deleteAccount() {
   await withAccount(async () => {
     const user = firebase.auth().currentUser;
     const uid = user.uid;
+    const code = (typeof friends === 'object' && friends.code) || (await net.backend.get(`users/${uid}/public`))?.code;
+    if (code) await net.backend.set(`codes/${code}`, null);
+    if (typeof stopFriends === 'function') stopFriends();
     await net.backend.set(`users/${uid}`, null);
     try {
       await user.delete();
@@ -409,8 +422,10 @@ function showCabinetTab() {
 function renderCabinetTabs() {
   const bar = document.getElementById('cabTabs');
   if (!bar) return;
+  const nInbox = typeof inboxCount === 'function' ? inboxCount() : 0;
   const tabs = [
     ['player', 'Игрок'],
+    ['friends', nInbox ? `Друзья · ${nInbox}` : 'Друзья'],
     ['games', 'Партии'],
     ['trace', 'Трасса'],
     ['table', 'Стол'],
@@ -465,6 +480,7 @@ function renderPlayerPane() {
     `<div><b>${percent(s.win, s.win + s.loss)}</b><span>выигр.</span></div>` +
     `<div title="Лучшая серия: ${best}"><b>${run}</b><span>${best ? `серия · ${best}` : 'серия'}</span></div>` +
     `</div>` +
+    `<button type="button" id="cabGoFriends" class="cab-prize-line">Друзья${typeof friendCount === 'function' && friendCount() ? ` <b>${friendCount()}</b>` : ''}</button>` +
     `<button type="button" id="cabGoTable" class="cab-prize-line">Стол и кии</button>` +
     `<button type="button" id="cabGoPrizes" class="cab-prize-line">Призы <b>${got}</b> из ${PRIZES.length}</button>` +
     guest + hotNote +
@@ -472,6 +488,10 @@ function renderPlayerPane() {
   bindNameField();
   document.getElementById('cabGoAuth')?.addEventListener('click', () => {
     account.tab = 'auth';
+    showCabinetTab();
+  });
+  document.getElementById('cabGoFriends')?.addEventListener('click', () => {
+    account.tab = 'friends';
     showCabinetTab();
   });
   document.getElementById('cabGoTable')?.addEventListener('click', () => {
@@ -557,6 +577,7 @@ function renderAccount() {
   }
   renderCabinetTabs();
   renderPlayerPane();
+  if (typeof renderFriendsPane === 'function') renderFriendsPane();
   if (typeof renderTablePane === 'function') renderTablePane();
   if (typeof renderTracePane === 'function') renderTracePane();
   renderPrizesPane();

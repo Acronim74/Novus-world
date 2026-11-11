@@ -260,6 +260,7 @@ async function createRoom(rules) {
 }
 
 async function joinRoom(rawCode) {
+  pendingInviteUid = null;
   const code = normalizeCode(rawCode);
   if (code.length < 4) throw new Error('Введите код комнаты.');
   const db = await netBackend();
@@ -746,7 +747,9 @@ function renderOnline() {
       '<section class="half"><h3>Войти в комнату</h3>' + nameField +
       '<label class="field">Код комнаты<input id="netCode" maxlength="7" placeholder="например K7P4Q" autocapitalize="characters" autocomplete="off"></label>' +
       `<button id="netJoin" class="primary"${busy}>Войти</button></section>` +
-      '</div>' + err;
+      '</div>' +
+      (typeof friendsOnlineMarkup === 'function' ? friendsOnlineMarkup() : '') +
+      err;
     const names = [...box.querySelectorAll('.netName')];
     for (const name of names) {
       name.value = myName();
@@ -762,6 +765,7 @@ function renderOnline() {
     code.addEventListener('keydown', e => {
       if (e.key === 'Enter') join();
     });
+    if (typeof bindFriendsOnline === 'function') bindFriendsOnline(box);
     return;
   }
   const peer = !net.peerUid
@@ -778,6 +782,7 @@ function renderOnline() {
         `</div><ul>${rulesLines(net.rules).map(l => `<li>${l}</li>`).join('')}</ul></div>`
       : '') +
     ruleOfferBanner() +
+    (typeof friendsOnlineMarkup === 'function' ? friendsOnlineMarkup() : '') +
     err +
     '<button id="netLeave">Выйти из комнаты</button>';
   document.getElementById('netRules')?.addEventListener('click', () => openRulesDialog('edit'));
@@ -795,6 +800,7 @@ function renderOnline() {
     if (net.active && phase !== 'over' && !confirm('Выйти из сетевой партии?')) return;
     leaveRoom();
   });
+  if (typeof bindFriendsOnline === 'function') bindFriendsOnline(box);
 }
 
 // ----- Окно «Условия игры»: перед созданием комнаты — сразу, в комнате — только с согласия обоих -----
@@ -806,6 +812,7 @@ const rulesDialog = document.getElementById('roomRules');
 const ruleOfferDialog = document.getElementById('ruleOffer');
 let rulesDraft = null;
 let rulesMode = 'create';
+let pendingInviteUid = null;
 
 function rulesLines(r) {
   if (!r) return [];
@@ -1011,7 +1018,10 @@ document.getElementById('btnRulesOk').addEventListener('click', () => {
   rulesDialog.classList.add('closed');
   const rules = { ...rulesDraft };
   if (rulesMode === 'edit') runOnline(() => proposeRoomRules(rules));
-  else runOnline(() => createRoom(rules));
+  else runOnline(async () => {
+    await createRoom(rules);
+    if (typeof afterRoomCreated === 'function') await afterRoomCreated();
+  });
 });
 document.getElementById('btnRuleAccept').addEventListener('click', () => runOnline(acceptRuleOffer));
 document.getElementById('btnRuleReject').addEventListener('click', () => runOnline(rejectRuleOffer));

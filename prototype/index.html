@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=54">
+  <link rel="stylesheet" href="style.css?v=55">
 </head>
 <body>
   <div id="app">
@@ -274,6 +274,20 @@
     </div>
   </div>
 
+  <div id="playInvite" class="modal closed">
+    <div class="sheet small" role="dialog" aria-label="Приглашение в игру">
+      <div class="drawer-head">
+        <span>Приглашение</span>
+      </div>
+      <p id="playInviteText"></p>
+      <div class="sheet-actions">
+        <button type="button" id="playInviteNo">Отклонить</button>
+        <button type="button" id="playInviteLater">Позже</button>
+        <button type="button" id="playInviteJoin" class="primary">Войти</button>
+      </div>
+    </div>
+  </div>
+
   <div id="account" class="modal closed">
     <div class="sheet cabinet" role="dialog" aria-label="Кабинет игрока">
       <div class="drawer-head">
@@ -282,6 +296,7 @@
       </div>
       <div id="cabTabs" class="cab-tabs" role="tablist"></div>
       <div class="cab-pane on" data-cab="player" id="cabPlayer"></div>
+      <div class="cab-pane" data-cab="friends" id="cabFriends"></div>
       <div class="cab-pane" data-cab="games" id="cabGames">
         <div id="recordsBody"></div>
         <div class="sheet-foot">
@@ -363,25 +378,26 @@
   </div>
 
   <!-- ?v= меняется с каждым выпуском, чтобы браузер не смешивал старые и новые файлы. -->
-  <script src="js/config.js?v=54"></script>
-  <script src="js/state.js?v=54"></script>
-  <script src="js/zones.js?v=54"></script>
-  <script src="js/shot.js?v=54"></script>
-  <script src="js/physics.js?v=54"></script>
-  <script src="js/referee.js?v=54"></script>
-  <script src="js/ai.js?v=54"></script>
-  <script src="js/records.js?v=54"></script>
-  <script src="js/trace.js?v=54"></script>
-  <script src="js/progress.js?v=54"></script>
-  <script src="js/render.js?v=54"></script>
-  <script src="js/input.js?v=54"></script>
-  <script src="js/ui.js?v=54"></script>
-  <script src="js/net-config.js?v=54"></script>
-  <script src="js/qr.js?v=54"></script>
-  <script src="js/net.js?v=54"></script>
-  <script src="js/account.js?v=54"></script>
-  <script src="js/rooms.js?v=54"></script>
-  <script src="js/tutorial.js?v=54"></script>
-  <script src="js/main.js?v=54"></script>
+  <script src="js/config.js?v=55"></script>
+  <script src="js/state.js?v=55"></script>
+  <script src="js/zones.js?v=55"></script>
+  <script src="js/shot.js?v=55"></script>
+  <script src="js/physics.js?v=55"></script>
+  <script src="js/referee.js?v=55"></script>
+  <script src="js/ai.js?v=55"></script>
+  <script src="js/records.js?v=55"></script>
+  <script src="js/trace.js?v=55"></script>
+  <script src="js/progress.js?v=55"></script>
+  <script src="js/render.js?v=55"></script>
+  <script src="js/input.js?v=55"></script>
+  <script src="js/ui.js?v=55"></script>
+  <script src="js/net-config.js?v=55"></script>
+  <script src="js/qr.js?v=55"></script>
+  <script src="js/net.js?v=55"></script>
+  <script src="js/account.js?v=55"></script>
+  <script src="js/friends.js?v=55"></script>
+  <script src="js/rooms.js?v=55"></script>
+  <script src="js/tutorial.js?v=55"></script>
+  <script src="js/main.js?v=55"></script>
 </body>
 </html>

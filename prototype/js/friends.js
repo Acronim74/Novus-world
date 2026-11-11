@@ -1,0 +1,454 @@
+'use strict';
+
+// Друзья: короткий код в кабинете, список, приглашение в комнату без мессенджера.
+const friends = {
+  code: '',
+  list: {},
+  inbox: {},
+  offs: [],
+  pendingAdd: '',
+  notice: '',
+  error: '',
+  snoozed: {},
+};
+
+function friendCount() {
+  return Object.keys(friends.list || {}).length;
+}
+
+function inboxCount() {
+  return Object.keys(friends.inbox || {}).filter(id => friends.inbox[id]?.room).length;
+}
+
+function isFriend(uid) {
+  return Boolean(uid && friends.list?.[uid]);
+}
+
+function friendName(uid) {
+  return (friends.list?.[uid]?.name || 'Игрок').trim() || 'Игрок';
+}
+
+function normalizeFriendCode(text) {
+  return String(text || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+}
+
+function randomFriendCode() {
+  return Array.from({ length: 6 }, () => ROOM_ALPHABET[Math.floor(Math.random() * ROOM_ALPHABET.length)]).join('');
+}
+
+function friendLink() {
+  if (!friends.code) return '';
+  const u = new URL(location.href);
+  const local = u.searchParams.get('net');
+  u.search = '';
+  if (local) u.searchParams.set('net', local);
+  u.searchParams.set('add', friends.code);
+  return u.toString();
+}
+
+function stopFriends() {
+  for (const off of friends.offs) {
+    try { off(); } catch { /* слушатель уже снят */ }
+  }
+  friends.offs = [];
+  friends.list = {};
+  friends.inbox = {};
+  friends.code = '';
+  friends.notice = '';
+  friends.error = '';
+}
+
+async function ensureFriendCode() {
+  if (!accountSignedIn() || !net.backend?.get) return;
+  const uid = account.user.uid;
+  const pub = await net.backend.get(`users/${uid}/public`);
+  const have = normalizeFriendCode(pub?.code);
+  if (have.length === 6) {
+    const owner = await net.backend.get(`codes/${have}`);
+    if (owner === uid) {
+      friends.code = have;
+      return;
+    }
+  }
+  for (let i = 0; i < 8; i++) {
+    const code = randomFriendCode();
+    if (await net.backend.get(`codes/${code}`)) continue;
+    await net.backend.set(`codes/${code}`, uid);
+    friends.code = code;
+    if (typeof pushAccountCloud === 'function') pushAccountCloud();
+    return;
+  }
+  throw new Error('Не удалось выдать код друга, попробуйте ещё раз.');
+}
+
+async function startFriends() {
+  stopFriends();
+  if (!accountSignedIn() || !net.backend?.on) return;
+  try {
+    await ensureFriendCode();
+  } catch (e) {
+    friends.error = e?.message || String(e);
+  }
+  friends.offs.push(net.backend.on(`users/${account.user.uid}/friends`, data => {
+    friends.list = data && typeof data === 'object' ? data : {};
+    renderFriendsPane();
+    if (typeof renderCabinetTabs === 'function') renderCabinetTabs();
+    if (typeof renderOnline === 'function') renderOnline();
+  }));
+  friends.offs.push(net.backend.on(`users/${account.user.uid}/inbox`, data => {
+    friends.inbox = data && typeof data === 'object' ? data : {};
+    renderFriendsPane();
+    if (typeof renderCabinetTabs === 'function') renderCabinetTabs();
+    maybeShowPlayInvite();
+  }));
+  renderFriendsPane();
+  const pendingAdd = friends.pendingAdd || sessionStorage.getItem('novus.addFriend') || '';
+  if (pendingAdd) {
+    friends.pendingAdd = '';
+    try { sessionStorage.removeItem('novus.addFriend'); } catch { /* нет хранилища */ }
+    account.tab = 'friends';
+    addFriendByCode(pendingAdd).then(() => openCabinet('friends')).catch(e => {
+      friends.error = e?.message || String(e);
+      openCabinet('friends');
+      renderFriendsPane();
+    });
+  }
+}
+
+async function addFriendUid(uid, knownName) {
+  if (!accountSignedIn()) throw new Error('Войдите в кабинет, чтобы добавить друга.');
+  if (!uid) throw new Error('Игрок не найден.');
+  if (uid === account.user.uid) throw new Error('Это ваш собственный код.');
+  if (isFriend(uid)) {
+    friends.notice = `${knownName || friendName(uid)} уже в списке.`;
+    friends.error = '';
+    renderFriendsPane();
+    return uid;
+  }
+  const pub = await net.backend.get(`users/${uid}/public`);
+  if (!pub) throw new Error('У этого игрока нет кабинета — он играет как гость.');
+  const name = String(knownName || pub.name || 'Игрок').trim().slice(0, 20) || 'Игрок';
+  await net.backend.set(`users/${account.user.uid}/friends/${uid}`, { at: Date.now(), name });
+  friends.notice = `${name} в списке друзей.`;
+  friends.error = '';
+  log(`${name} добавлен в друзья.`, 'ok');
+  return uid;
+}
+
+async function addFriendByCode(raw) {
+  const code = normalizeFriendCode(raw);
+  if (code.length < 6) throw new Error('Код друга — 6 знаков из кабинета, не код комнаты.');
+  const uid = await net.backend.get(`codes/${code}`);
+  if (!uid || typeof uid !== 'string') {
+    throw new Error('Код не найден. Попросите друга открыть кабинет → Друзья.');
+  }
+  return addFriendUid(uid);
+}
+
+async function removeFriend(uid) {
+  if (!accountSignedIn() || !uid) return;
+  await net.backend.set(`users/${account.user.uid}/friends/${uid}`, null);
+}
+
+async function sendPlayInvite(uid) {
+  if (!accountSignedIn()) throw new Error('Войдите в кабинет, чтобы приглашать друзей.');
+  if (!net.code) throw new Error('Сначала создайте комнату.');
+  if (uid === account.user.uid) throw new Error('Нельзя пригласить себя.');
+  if (net.peerUid) throw new Error('В комнате уже двое.');
+  await net.backend.set(`users/${uid}/inbox/${account.user.uid}`, {
+    from: account.user.uid,
+    name: (myName() || 'Игрок').slice(0, 20),
+    room: net.code,
+    at: Date.now(),
+  });
+  friends.notice = `Приглашение отправлено: ${friendName(uid)}.`;
+  friends.error = '';
+  log(`Приглашение отправлено: ${friendName(uid)}.`, 'ok');
+  renderFriendsPane();
+}
+
+function inviteFriend(uid) {
+  if (!accountSignedIn()) {
+    openCabinet('auth');
+    return;
+  }
+  if (net.peerUid) {
+    friends.error = 'В комнате уже двое. Выйдите или дождитесь конца партии.';
+    renderFriendsPane();
+    if (typeof renderOnline === 'function') renderOnline();
+    return;
+  }
+  if (net.code) {
+    runOnline(() => sendPlayInvite(uid));
+    return;
+  }
+  pendingInviteUid = uid;
+  closeCabinet();
+  openOnline();
+  openRulesDialog('create');
+}
+
+async function afterRoomCreated() {
+  if (!pendingInviteUid) return;
+  const uid = pendingInviteUid;
+  pendingInviteUid = null;
+  await sendPlayInvite(uid);
+}
+
+function newestPlayInvite() {
+  const items = Object.entries(friends.inbox || {}).filter(([, v]) => v && v.room);
+  items.sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
+  return items[0] || null;
+}
+
+function maybeShowPlayInvite() {
+  const box = document.getElementById('playInvite');
+  if (!box) return;
+  const pair = newestPlayInvite();
+  if (!pair) {
+    box.classList.add('closed');
+    return;
+  }
+  const [id, inv] = pair;
+  if (net.code && net.code === inv.room) {
+    if (accountSignedIn()) net.backend.set(`users/${account.user.uid}/inbox/${id}`, null);
+    return;
+  }
+  if (friends.snoozed[id]) return;
+  const offer = document.getElementById('ruleOffer');
+  if (offer && !offer.classList.contains('closed')) return;
+  fillPlayInvite(id, inv);
+  box.classList.remove('closed');
+}
+
+function fillPlayInvite(id, inv) {
+  const box = document.getElementById('playInvite');
+  box.dataset.id = id;
+  document.getElementById('playInviteText').textContent =
+    `${inv.name || 'Игрок'} приглашает сыграть. Комната ${inv.room}.`;
+}
+
+async function dismissPlayInvite(forget) {
+  const box = document.getElementById('playInvite');
+  const id = box?.dataset.id;
+  box?.classList.add('closed');
+  if (!id) return;
+  if (forget && accountSignedIn()) {
+    await net.backend.set(`users/${account.user.uid}/inbox/${id}`, null);
+  } else {
+    friends.snoozed[id] = true;
+  }
+}
+
+async function acceptPlayInvite() {
+  const box = document.getElementById('playInvite');
+  const id = box?.dataset.id;
+  const inv = id && friends.inbox[id];
+  if (!inv?.room) {
+    box?.classList.add('closed');
+    return;
+  }
+  box.classList.add('closed');
+  friends.snoozed[id] = true;
+  if (net.code === inv.room) {
+    if (accountSignedIn()) net.backend.set(`users/${account.user.uid}/inbox/${id}`, null);
+    openOnline();
+    return;
+  }
+  if (net.code) leaveRoom();
+  closeCabinet();
+  openOnline();
+  await runOnline(() => joinRoom(inv.room));
+  if (net.code === inv.room) {
+    if (accountSignedIn()) net.backend.set(`users/${account.user.uid}/inbox/${id}`, null);
+  } else {
+    delete friends.snoozed[id];
+    maybeShowPlayInvite();
+  }
+}
+
+function friendsOnlineMarkup() {
+  if (net.peerUid) {
+    if (accountSignedIn() && net.peerUid && !isFriend(net.peerUid)) {
+      return '<button type="button" id="netAddFriend">Добавить соперника в друзья</button>';
+    }
+    return '';
+  }
+  if (!accountSignedIn()) {
+    return '<p class="tip">Войдите в кабинет — там список друзей, им можно отправить приглашение без ссылки.</p>';
+  }
+  const rows = Object.entries(friends.list || {});
+  if (!rows.length) {
+    return '<p class="tip">Друзей пока нет. Кабинет → Друзья: обменяйтесь кодами, затем приглашайте отсюда.</p>';
+  }
+  return '<div class="friends-invite"><div class="head">Пригласить друга</div>' +
+    rows.map(([uid, f]) =>
+      `<div class="friend-row">` +
+      `<span>${escapeHtml(f.name || 'Игрок')}</span>` +
+      `<button type="button" class="primary" data-invite="${escapeHtml(uid)}">Пригласить</button>` +
+      `</div>`
+    ).join('') +
+    '</div>';
+}
+
+function bindFriendsOnline(box) {
+  box.querySelectorAll('[data-invite]').forEach(btn => {
+    btn.addEventListener('click', () => inviteFriend(btn.dataset.invite));
+  });
+  document.getElementById('netAddFriend')?.addEventListener('click', () => {
+    runOnline(async () => {
+      await addFriendUid(net.peerUid, net.peerName);
+      renderOnline();
+    });
+  });
+}
+
+function renderFriendsPane() {
+  const box = document.getElementById('cabFriends');
+  if (!box) return;
+  const err = friends.error ? `<div class="net-error">${escapeHtml(friends.error)}</div>` : '';
+  const notice = friends.notice ? `<div class="tip">${escapeHtml(friends.notice)}</div>` : '';
+
+  if (!accountSignedIn()) {
+    box.innerHTML =
+      '<p class="tip">Войдите — появится ваш код друга. По нему вас добавят в список и смогут пригласить в комнату, не копируя ссылку.</p>' +
+      '<button type="button" id="frGoAuth" class="primary">Войти</button>';
+    document.getElementById('frGoAuth')?.addEventListener('click', () => {
+      account.tab = 'auth';
+      showCabinetTab();
+    });
+    return;
+  }
+
+  const invites = Object.entries(friends.inbox || {}).filter(([, v]) => v && v.room)
+    .sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
+  const inviteHtml = invites.length
+    ? '<div class="cab-section-head">Приглашения</div>' +
+      invites.map(([id, inv]) =>
+        `<div class="friend-row">` +
+        `<div><div class="name">${escapeHtml(inv.name || 'Игрок')}</div>` +
+        `<div class="hint">комната ${escapeHtml(inv.room)}${inv.at ? ' · ' + formatWhen(inv.at) : ''}</div></div>` +
+        `<button type="button" class="primary" data-accept="${escapeHtml(id)}">Войти</button>` +
+        `<button type="button" data-decline="${escapeHtml(id)}">Отклонить</button>` +
+        `</div>`
+      ).join('')
+    : '';
+
+  const list = Object.entries(friends.list || {}).sort((a, b) =>
+    String(a[1]?.name || '').localeCompare(String(b[1]?.name || ''), 'ru')
+  );
+  const listHtml = list.length
+    ? '<div class="cab-section-head">Список</div>' +
+      list.map(([uid, f]) =>
+        `<div class="friend-row">` +
+        `<div><div class="name">${escapeHtml(f.name || 'Игрок')}</div>` +
+        `<div class="hint">${f.at ? 'добавлен · ' + formatWhen(f.at) : ''}</div></div>` +
+        `<button type="button" class="primary" data-invite="${escapeHtml(uid)}">Пригласить</button>` +
+        `<button type="button" data-remove="${escapeHtml(uid)}">Убрать</button>` +
+        `</div>`
+      ).join('')
+    : '<p class="tip">Список пуст. Введите код друга ниже или после партии нажмите «Добавить соперника в друзья».</p>';
+
+  const code = friends.code
+    ? `<div class="friend-code"><div class="room-code">Ваш код <b>${escapeHtml(friends.code)}</b></div>` +
+      '<p class="tip">Его вводят в кабинете → Друзья. Можно сразу отправить ссылку.</p>' +
+      '<div class="invite-actions">' +
+      '<button type="button" id="frCopy">Скопировать код</button>' +
+      '<button type="button" id="frCopyLink">Скопировать ссылку</button>' +
+      '<button type="button" id="frShare" class="primary">Поделиться</button>' +
+      '</div></div>'
+    : '<p class="tip">Код появится через секунду…</p>';
+
+  box.innerHTML =
+    code + notice + err +
+    '<form id="frAddForm" class="fr-add">' +
+    '<label class="field">Код друга<input id="frAdd" maxlength="8" placeholder="например K7P4QX" autocapitalize="characters" autocomplete="off" spellcheck="false"></label>' +
+    '<button type="submit" class="primary">Добавить</button>' +
+    '</form>' +
+    inviteHtml + listHtml;
+
+  document.getElementById('frCopy')?.addEventListener('click', async e => {
+    markCopied(e.currentTarget, await copyText(friends.code));
+  });
+  document.getElementById('frCopyLink')?.addEventListener('click', async e => {
+    markCopied(e.currentTarget, await copyText(friendLink()));
+  });
+  document.getElementById('frShare')?.addEventListener('click', shareFriendCode);
+  document.getElementById('frAddForm')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    friends.error = '';
+    friends.notice = '';
+    try {
+      await addFriendByCode(document.getElementById('frAdd').value);
+      const input = document.getElementById('frAdd');
+      if (input) input.value = '';
+    } catch (err) {
+      friends.error = err?.message || String(err);
+    }
+    renderFriendsPane();
+  });
+  box.querySelectorAll('[data-invite]').forEach(btn => {
+    btn.addEventListener('click', () => inviteFriend(btn.dataset.invite));
+  });
+  box.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Убрать ${friendName(btn.dataset.remove)} из друзей?`)) return;
+      await removeFriend(btn.dataset.remove);
+    });
+  });
+  box.querySelectorAll('[data-accept]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      document.getElementById('playInvite').dataset.id = btn.dataset.accept;
+      await acceptPlayInvite();
+    });
+  });
+  box.querySelectorAll('[data-decline]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await net.backend.set(`users/${account.user.uid}/inbox/${btn.dataset.decline}`, null);
+    });
+  });
+}
+
+async function shareFriendCode() {
+  const url = friendLink();
+  if (navigator.share && url) {
+    try {
+      await navigator.share({
+        title: 'Новус',
+        text: `Добавь меня в друзья в новусе. Код ${friends.code}`,
+        url,
+      });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  const btn = document.getElementById('frShare');
+  if (btn) markCopied(btn, await copyText(url || friends.code));
+}
+
+document.getElementById('playInviteJoin')?.addEventListener('click', () => {
+  acceptPlayInvite().catch(e => {
+    friends.error = e?.message || String(e);
+    renderFriendsPane();
+  });
+});
+document.getElementById('playInviteLater')?.addEventListener('click', () => dismissPlayInvite(false));
+document.getElementById('playInviteNo')?.addEventListener('click', () => dismissPlayInvite(true));
+document.getElementById('playInvite')?.addEventListener('click', e => {
+  if (e.target.id === 'playInvite') dismissPlayInvite(false);
+});
+document.getElementById('roomRules')?.addEventListener('click', e => {
+  if (e.target.closest('.close') || e.target.id === 'roomRules') pendingInviteUid = null;
+});
+
+const addFromUrl = new URLSearchParams(location.search).get('add');
+if (addFromUrl) {
+  friends.pendingAdd = addFromUrl;
+  try { sessionStorage.setItem('novus.addFriend', addFromUrl); } catch { /* нет хранилища */ }
+  const u = new URL(location.href);
+  u.searchParams.delete('add');
+  history.replaceState(null, '', `${u.pathname}${u.search}${u.hash}`);
+} else {
+  try { friends.pendingAdd = sessionStorage.getItem('novus.addFriend') || ''; } catch { /* нет хранилища */ }
+}

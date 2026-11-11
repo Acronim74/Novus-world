@@ -367,7 +367,7 @@ function overlayOpen() {
 for (const modal of document.querySelectorAll('.modal')) {
   modal.addEventListener('click', e => {
     if (e.target.closest('.close')) modal.classList.add('closed');
-    else if (e.target === modal && modal.id !== 'ruleOffer') modal.classList.add('closed');
+    else if (e.target === modal && modal.id !== 'ruleOffer' && modal.id !== 'playInvite') modal.classList.add('closed');
   });
 }
 
