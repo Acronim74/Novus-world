@@ -318,8 +318,9 @@ function enterRoom(code, role) {
     renderOnline();
   }));
   net.unsubs.push(db.on(roomPath('rules'), rules => {
+    if (!rules) return;
     net.rules = rules;
-    if (typeof applyLoadout === 'function') applyLoadout();
+    applyRules(rules);
     renderOnline();
   }));
   net.unsubs.push(db.on(roomPath('proposal'), onRuleProposal));
@@ -347,7 +348,7 @@ function onPlayers(players) {
 
 // Условия комнаты едут вместе с партией, чтобы оба начали её по одним правилам.
 function startRoomGame(n, red) {
-  return net.backend.set(roomPath('game'), { n, red, rules: net.rules || currentRules() });
+  return net.backend.set(roomPath('game'), { n, red, rules: sanitizeRules(net.rules || currentRules()) });
 }
 
 function onMatch(m) {
@@ -899,9 +900,10 @@ function openRulesDialog(mode) {
     : needConfirm ? 'Предложить сопернику' : 'Сохранить';
   const skin = typeof tableSkinCaption === 'function' ? tableSkinCaption(rulesDraft.skin) : '';
   let note = '';
-  if (mode === 'edit' && net.active) note = 'Новые условия начнут действовать со следующей партии. ';
   if (needConfirm) {
-    note += 'Соперник должен подтвердить. Если не подтвердит, условия останутся прежними. ';
+    note += 'Соперник должен подтвердить. После подтверждения условия вступят в силу сразу, в том числе подсказка при прицеливании. Если не подтвердит, останутся прежние. ';
+  } else if (mode === 'edit') {
+    note += 'Новые условия действуют сразу, в том числе подсказка при прицеливании. ';
   }
   if (skin && (mode !== 'edit' || net.role === 'host')) {
     note += `Оформление стола — из вашего кабинета: ${skin}. Соперник увидит этот стол.`;
@@ -923,6 +925,8 @@ async function proposeRoomRules(raw) {
   if (net.role === 'host' && typeof exportTableSkin === 'function') rules.skin = exportTableSkin();
   else if (net.rules?.skin) rules.skin = net.rules.skin;
   if (!net.peerUid) {
+    net.rules = rules;
+    applyRules(rules);
     await net.backend.set(roomPath('rules'), rules);
     log('Условия комнаты обновлены.', 'ok');
     return;
@@ -944,10 +948,12 @@ async function acceptRuleOffer() {
   const rules = sanitizeRules(p.rules);
   // Оформление стола задаёт хозяин: если предлагает гость, стол не меняем.
   if (net.role === 'host' && net.rules?.skin) rules.skin = net.rules.skin;
+  net.rules = rules;
+  applyRules(rules);
   await net.backend.set(roomPath('rules'), rules);
   await net.backend.set(roomPath('proposal'), null);
   closeModal('ruleOffer');
-  log('Новые условия приняты. Они войдут в силу со следующей партии.', 'ok');
+  log('Новые условия приняты.', 'ok');
 }
 
 async function rejectRuleOffer() {
@@ -967,7 +973,7 @@ function fillRuleOffer() {
   const p = net.proposal;
   if (!p?.rules) return;
   document.getElementById('ruleOfferText').textContent =
-    `${net.peerName || 'Соперник'} предлагает изменить условия. Если отклоните — останутся прежние. Новые войдут в силу со следующей партии.`;
+    `${net.peerName || 'Соперник'} предлагает изменить условия. Если примете — они вступят в силу сразу, в том числе подсказка. Если отклоните — останутся прежние.`;
   document.getElementById('ruleOfferList').innerHTML = rulesLines(p.rules).map(l => `<li>${l}</li>`).join('');
 }
 

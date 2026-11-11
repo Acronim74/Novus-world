@@ -172,6 +172,7 @@ function randomTable() {
 
 // Ставит условия зала. Вызывается при входе в зал и перед каждой новой партией.
 function applyRoom() {
+  if (net.code) return;
   const room = currentRoom();
   if (!room) return;
   cfg.level = room.level;

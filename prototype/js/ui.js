@@ -205,15 +205,15 @@ function refreshControls() {
   document.getElementById('groupLevel').classList.toggle('dim', cfg.mode !== 'ai' || net.active);
   // В зале и по сети «вдвоём» здесь не предлагаем: это выкидывало из зала без предупреждения.
   document.getElementById('groupMode').hidden = Boolean(room || net.code);
-  // В сетевой партии условия общие: текущий сет уже идёт по ним, новые — только по согласию и со следующей партии.
-  for (const id of ['groupTable', 'groupHint', 'groupTime']) document.getElementById(id).classList.toggle('locked', net.active);
+  // В сетевой партии условия общие: менять их можно только в окне комнаты, после согласия обоих.
+  for (const id of ['groupTable', 'groupHint', 'groupTime']) document.getElementById(id).classList.toggle('locked', Boolean(net.code));
   // В зале соперника, подсказку и стол задаёт зал — здесь их только показывают.
   for (const id of ['groupLevel', 'groupTable', 'groupHint']) if (room) document.getElementById(id).classList.add('locked');
   if (!room && !net.active) document.getElementById('groupLevel').classList.remove('locked');
-  for (const id of ['optCircleDark', 'optFree']) document.getElementById(id).disabled = net.active;
+  for (const id of ['optCircleDark', 'optFree']) document.getElementById(id).disabled = Boolean(net.code);
   const zoneBox = document.getElementById('optZoneReturn');
   zoneBox.checked = cfg.zoneReturn;
-  zoneBox.disabled = net.active || Boolean(room);
+  zoneBox.disabled = Boolean(net.code) || Boolean(room);
   document.getElementById('tableNote').textContent = TABLE_STATES[cfg.table].note;
   const hint = HINT_MODES[cfg.hintLen];
   let hintNote = hint.note;
@@ -227,7 +227,7 @@ function refreshControls() {
     : 'Думайте над ударом сколько угодно.';
   const levelNote = document.getElementById('levelNetNote');
   levelNote.textContent = net.code
-    ? 'Идёт игра по сети: компьютер не участвует. Условия комнаты меняются в окне «Игра по сети»: один предлагает, другой подтверждает. Пока нет согласия, остаются прежние.'
+    ? 'Идёт игра по сети: компьютер не участвует. Условия комнаты меняются в окне «Игра по сети»: один предлагает, другой подтверждает — и они сразу действуют на столе. Пока нет согласия, остаются прежние.'
     : room
       ? `Вы в зале «${room.name}». Здесь нельзя менять соперника, сложность, натирку стола и подсказку — их задаёт зал. Чтобы выбрать условия самому, откройте «Залы» и войдите в «Свободную игру».`
       : '';
@@ -310,10 +310,12 @@ bindSeg('optLevel', () => cfg.level, v => {
   updatePanel();
 });
 bindSeg('optHintLen', () => cfg.hintLen, v => {
+  if (net.code) return;
   if (typeof currentRoom === 'function' && currentRoom()) return;
   cfg.hintLen = v;
 });
 bindSeg('optShotTime', () => cfg.shotTime, v => {
+  if (net.code) return;
   cfg.shotTime = Number(v);
   if (phase === 'place' || phase === 'remote') resetTurnTimer();
 });
@@ -332,6 +334,7 @@ bindRange('optMuStriker', () => cfg.muStriker, v => { cfg.muStriker = v; });
 bindRange('optMuPawn', () => cfg.muPawn, v => { cfg.muPawn = v; });
 bindRange('optPuckE', () => cfg.puckE, v => { cfg.puckE = v; });
 bindSeg('optTable', () => cfg.table, v => {
+  if (net.code) return;
   if (typeof currentRoom === 'function' && currentRoom()) return;
   setTable(v);
 });
